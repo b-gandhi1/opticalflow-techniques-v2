@@ -137,7 +137,7 @@ def OF_GF(cap,ref_frame,img_process,savefilename,mask): # Gunnar-Farneback, dens
 
         # Converts HSV to RGB (BGR) color representation
         rgb = cv.cvtColor(mask, cv.COLOR_HSV2BGR)
-      
+
         # Opens a new window and displays the output frame
         cv.imshow('Optical Flow - Gunnar Farneback', rgb)
 
@@ -254,22 +254,22 @@ def main():
     blobdetect_process = mp.Process(target=blobdetect, args=(cap,img_process,savefilename_BD))
 
     try: 
-        # # start multi-processes
-        # OF_LK_process.start()
-        # OF_GF_process.start()
-        # # OF_HS_process.start()
-        # blobdetect_process.start()
+        # start multi-processes
+        OF_LK_process.start()
+        OF_GF_process.start()
+        # OF_HS_process.start()
+        blobdetect_process.start()
 
-        # # finish multi together
-        # OF_LK_process.join()
-        # OF_GF_process.join()
-        # # OF_HS_process.join()
-        # blobdetect_process.join()
-        # print('All processes have finished.')
+        # finish multi together
+        OF_LK_process.join()
+        OF_GF_process.join()
+        # OF_HS_process.join()
+        blobdetect_process.join()
+        print('All processes have finished.')
         
         # not using multi-processing: 
         # OF_LK(cap,ref_frame,img_process,savefilename_LK)
-        OF_GF(cap,ref_frame,img_process,savefilename_GF,mask_GF) # keeps gettig killed, due to RAM and CPU being saturated.
+        # OF_GF(cap,ref_frame,img_process,savefilename_GF,mask_GF) # keeps gettig killed, due to RAM and CPU being saturated.
         # blobdetect(cap,img_process,savefilename_BD)
 
     except KeyboardInterrupt:

@@ -1,18 +1,23 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*- 
 
+# above two lines not needed here as ROS is not being used here. 
+
 import cv2 as cv
 import numpy as np
 import os
 import glob
+import datetime
+import time
+import sys
 
-def fibrescope_process(frame):
+def fibrescope_process(frame,DIM,K,D,width,height):
     # undistorting image: 
     balance = 0.7 # change this, high val will give wider view: 0 < balance <= 1 
     dim2 = None
     dim3 = None
 
-    DIM,K,D = fish_calib_params()
+    # DIM,K,D = fish_calib_params()
     
     # for p in sys.argv[1:]:
     img = frame
@@ -26,31 +31,42 @@ def fibrescope_process(frame):
         dim3 = dim1    
         
     scaled_K = K * dim1[0] / DIM[0]  # The values of K is to scale with image dimension.
-    scaled_K[2][2] = 1.0  # Except that K[2][2] is always 1.0    # This is how scaled_K, dim2 and balance are used to determine the final K used to un-distort image. OpenCV document failed to make this clear!
+    scaled_K[2][2] = 1.0  # Except that K[2][2] is always 1.0    
+    # This is how scaled_K, dim2 and balance are used to determine the final K used to un-distort image. OpenCV document failed to make this clear!
     new_K = cv.fisheye.estimateNewCameraMatrixForUndistortRectify(scaled_K, D, dim2, np.eye(3), balance=balance)
 
-    map1,map2 = cv.fisheye.initUndistortRectifyMap(scaled_K,D,np.eye(3),new_K,dim3,cv.CV_16SC2)
+    # map1,map2 = cv.fisheye.initUndistortRectifyMap(scaled_K,D,np.eye(3),new_K,dim3,cv.CV_16SC2)
+    map1,map2 = cv.fisheye.initUndistortRectifyMap(scaled_K,D,np.eye(3),new_K,dim3,cv.CV_32FC1)
+
+    # What do above two lines do? does everything above need to be in a loop?? 
+    
+    
     undistorted_img = cv.remap(img,map1,map2,interpolation=cv.INTER_LINEAR,borderMode=cv.BORDER_CONSTANT)
 
-    cv.imshow('undistorted img', undistorted_img)
-    cv.waitKey(0)
+    # cv.imshow('calib: raw img, press key to close', img)
+    # print('raw img', img.shape)
+    # cv.imshow('calib: undistorted img, press key to close', undistorted_img.shape)
+    # print('undistorted img', undistorted_img)
+    # cv.waitKey(0)
 
     frame = undistorted_img # apply undistortion to frame
-
+    
     # continue regular img processing: binarize, morph 
+    frame = cv.resize(frame,(int(width/2),int(height/2))) # resize img after undistortion
     kernel = np.ones((3,3),np.uint8)
-    gray = cv.cvtColor(frame, cv.COLOR_RBG2GRAY)
-    mask_blank = np.zeros_like(gray,dtype='uint8') # ,dtype='uint8'
-    # x,y,w,h = 140,70,200,150 # after resizing frame size. UPDATE THIS
-    x,y,w,h = 350,280,200,110 # after resizing frame size. UPDATE THIS
-    rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
-    masked = cv.bitwise_and(gray,gray,mask=rect)
-    binary = cv.threshold(masked,40,255,cv.THRESH_BINARY)[1] # might remove: + cv.thresh_otsu
-    morph_open = cv.morphologyEx(binary,cv.MORPH_OPEN,kernel)
-    morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
-    dilated = cv.dilate(morph_close,kernel)
+    gray = cv.cvtColor(frame, cv.COLOR_RGB2GRAY)
+    # mask_blank = np.zeros_like(gray,dtype='uint8') # ,dtype='uint8'
+    # # x,y,w,h = 140,70,200,150 # after resizing frame size. UPDATE THIS
+    # # x,y,w,h = 350,280,200,110 # after resizing frame size. UPDATE THIS
+    # x,y,w,h = 0,0,frame.shape[1],frame.shape[0] # no cropping, using all of it for now. 
+    # rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
+    # masked = cv.bitwise_and(gray,gray,mask=rect)
+    # binary = cv.threshold(masked,40,255,cv.THRESH_BINARY)[1] # might remove: + cv.thresh_otsu
+    # morph_open = cv.morphologyEx(binary,cv.MORPH_OPEN,kernel)
+    # morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
+    # dilated = cv.dilate(morph_close,kernel)
 
-    return dilated
+    return gray
 
 def fish_calib_params():
 
@@ -68,7 +84,7 @@ def fish_calib_params():
     imgpoints = [] # 2d points in image plane.images = glob.glob('*.jpg')for fname in images:
     
     # load calibration images - checkerboard
-    images = glob.glob('data collection with franka/ViconLab/fibrescope/calibrationcheckboard/calib*.jpg') # define path
+    images = glob.glob('data collection with franka/ViconLab/fibrescope/calibrationcheckboard/calib*.png') # define path
 
     for fname in images:
         img = cv.imread(fname)
@@ -77,7 +93,14 @@ def fish_calib_params():
         else:
             assert _img_shape == img.shape[:2], "All images must share the same size."    
         gray = cv.cvtColor(img,cv.COLOR_RGB2GRAY)
-
+        
+        # temp show images: 
+        cv.imshow('calibration images', gray)
+        print(np.shape(gray))
+        # use cv.waitkey to set a timer for 3 sec
+        cv.waitKey(300)
+        cv.destroyWindow('calibration images')
+        
         # Find the chess board corners
         ret, corners = cv.findChessboardCorners(gray, CHECKERBOARD, cv.CALIB_CB_ADAPTIVE_THRESH+cv.CALIB_CB_FAST_CHECK+cv.CALIB_CB_NORMALIZE_IMAGE)
         # If found, add object points, image points (after refining them)
@@ -109,9 +132,13 @@ def fish_calib_params():
     print("K=np.array(" + str(K.tolist()) + ")")
     print("D=np.array(" + str(D.tolist()) + ")")
     
-    return DIM,K,D
+    # save return parameters: 
+    np.savez('data collection with franka/ViconLab/fibrescope/CalibrationParameters_DIM_K_D_'+str(datetime.date.today())+'.npz',DIM=DIM,K=K,D=D)
+    # another function is np.savez_compressed() - what is the difference?? 
+    # return DIM,K,D
     
-def webcam_process(frame):
+def webcam_process(frame,a,b,c,width,height): # a,b,c blank parameters
+    frame = cv.resize(frame,(int(width/2),int(height/2)))
     kernel = np.ones((5,5),np.uint8)
     gray = cv.cvtColor(frame,cv.COLOR_RGB2GRAY)
     mask_blank = np.zeros_like(gray,dtype='uint8') # ,dtype='uint8'
@@ -129,21 +156,52 @@ def main():
     # read video opencv
     video_path = input('Enter input video path: ')
     cap = cv.VideoCapture(video_path) # insert video path
-    if not cap.isOpened(): print("ERROR: Cannot open camera/video file.")
-
+    if not cap.isOpened(): print("ERROR: Cannot open camera/video file.") 
     # # set size
     # cap.set(cv.CAP_PROP_FRAME_WIDTH,640)
     # cap.set(cv.CAP_PROP_FRAME_HEIGHT,480)
 
     # get size
-    width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
+    # width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
+    # height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
 
     # take reference frame 
     ret, ref_frame = cap.read()
 
+    # get size:
+    width = np.shape(ref_frame)[1]
+    height = np.shape(ref_frame)[0]
+    
     # resize:
-    ref_frame = cv.resize(ref_frame,(int(width/2),int(height/2)),)
+    ref_frame = cv.resize(ref_frame,(int(width/2),int(height/2)))
+    
+    # fibrescope calibration parameters 
+    
+    recalib = input('Would you like to re-calibrate today? (Y/N | y/n): ')
+    if recalib == 'y' or recalib == 'Y': 
+        print('Re-calibrating...')
+        # run calibration with checkerboard calib images
+        DIM,K,D = fish_calib_params()
+    elif recalib == 'n' or recalib == 'N':
+        print('Using saved calibration parameters.')
+        # read calib params from file
+        # calib_path = input('Enter calibration parameters file path: ')
+        calib_path = 'data collection with franka/ViconLab/fibrescope/CalibrationParameters_DIM_K_D_2023-09-12.npz'
+        npzfile = np.load(calib_path)
+        
+        # verify variable names
+        variable_names = npzfile.files
+
+        # Print the variable names
+        for variable_name in variable_names:
+            print(variable_name)
+            
+        DIM = npzfile['DIM']
+        K = npzfile['K']
+        D = npzfile['D']
+    else:
+        print('Invalid input.')
+        exit()
     
     # user input: select webcam or fibrescope
     switcher = {
@@ -153,29 +211,31 @@ def main():
     img_process_selector = input("Select process, 'w' for webcam, and 'f' for fibrescope: ")
     print('Process selected: ', img_process_selector)
     img_process = switcher.get(img_process_selector)
-    ref_frame_filt = img_process(ref_frame)
     
-    # cv.imshow('Raw frame',ref_frame)
-    # cv.imshow('Filtered frame', ref_frame_filt)
+    # for p in sys.argv[1:]:
+    ref_frame_filt = img_process(ref_frame,DIM,K,D,width,height)
+    
+    cv.imshow('Raw ref_frame, press key to exit',ref_frame)
+    cv.imshow('Filtered ref_frame, press key to exit', ref_frame_filt)
+    cv.waitKey(0)
     
     while True: 
         ret, frame = cap.read()
         if not ret: break
-        # frame = cv.cvtColor(frame, cv.COLOR_RGB2GRAY) # convert ref_frame to grayscale
-        frame = cv.resize(frame,(int(width/2),int(height/2)),)
-        cv.imshow('Raw',frame)
-        frame_filt = img_process(frame)
-        cv.imshow('Filtered img from '+img_process_selector,frame_filt)
+        cv.imshow('Raw video',frame)
+        frame_filt = img_process(frame,DIM,K,D,width,height)
+        cv.imshow('Filtered video from '+img_process_selector,frame_filt)
         
         if cv.waitKey(10) & 0xFF == ord('q'):
             print('Quitting...')
+            # cap.release()
+            # cv.destroyAllWindows()
             break
 
     # if cv.waitKey(0) & 0xFF == ord('q'):
     #     print('Quitting...')
-    #     cap.release()
-    #     cv.destroyAllWindows()
+    cap.release()
+    cv.destroyAllWindows()
 
 if __name__ == '__main__':
     main()
-    
