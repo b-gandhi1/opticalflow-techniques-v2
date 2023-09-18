@@ -3,7 +3,7 @@
 import cv2
 # assert cv2.__version__[0] == '3', 'The fisheye module requires opencv version >= 3.0.0'
 import numpy as np
-import os
+# import os
 import glob
 
 # CHECKERBOARD = (6,9)

@@ -11,37 +11,9 @@ import datetime
 import time
 import sys
 
-def fibrescope_process(frame,DIM,K,D,width,height):
-    # undistorting image: 
-    balance = 0.7 # change this, high val will give wider view: 0 < balance <= 1 
-    dim2 = None
-    dim3 = None
-
-    # DIM,K,D = fish_calib_params()
+def fibrescope_process(frame,width,height,map1,map2):    
     
-    # for p in sys.argv[1:]:
-    img = frame
-    dim1 = img.shape[:2][::-1] # dim1 = dim of raw img to undistort
-    
-    assert dim1[0]/dim1[1] == DIM[0]/DIM[1], "Image to undistort needs to have same aspect ratio as the ones used in calibration"
-
-    if not dim2:
-        dim2 = dim1    
-    if not dim3:
-        dim3 = dim1    
-        
-    scaled_K = K * dim1[0] / DIM[0]  # The values of K is to scale with image dimension.
-    scaled_K[2][2] = 1.0  # Except that K[2][2] is always 1.0    
-    # This is how scaled_K, dim2 and balance are used to determine the final K used to un-distort image. OpenCV document failed to make this clear!
-    new_K = cv.fisheye.estimateNewCameraMatrixForUndistortRectify(scaled_K, D, dim2, np.eye(3), balance=balance)
-
-    # map1,map2 = cv.fisheye.initUndistortRectifyMap(scaled_K,D,np.eye(3),new_K,dim3,cv.CV_16SC2)
-    map1,map2 = cv.fisheye.initUndistortRectifyMap(scaled_K,D,np.eye(3),new_K,dim3,cv.CV_32FC1)
-
-    # What do above two lines do? does everything above need to be in a loop?? 
-    
-    
-    undistorted_img = cv.remap(img,map1,map2,interpolation=cv.INTER_LINEAR,borderMode=cv.BORDER_CONSTANT)
+    undistorted_img = cv.remap(frame,map1,map2,interpolation=cv.INTER_LINEAR,borderMode=cv.BORDER_CONSTANT) # fisheye undistort
 
     # cv.imshow('calib: raw img, press key to close', img)
     # print('raw img', img.shape)
@@ -55,18 +27,18 @@ def fibrescope_process(frame,DIM,K,D,width,height):
     frame = cv.resize(frame,(int(width/2),int(height/2))) # resize img after undistortion
     kernel = np.ones((3,3),np.uint8)
     gray = cv.cvtColor(frame, cv.COLOR_RGB2GRAY)
-    # mask_blank = np.zeros_like(gray,dtype='uint8') # ,dtype='uint8'
-    # # x,y,w,h = 140,70,200,150 # after resizing frame size. UPDATE THIS
-    # # x,y,w,h = 350,280,200,110 # after resizing frame size. UPDATE THIS
-    # x,y,w,h = 0,0,frame.shape[1],frame.shape[0] # no cropping, using all of it for now. 
-    # rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
-    # masked = cv.bitwise_and(gray,gray,mask=rect)
-    # binary = cv.threshold(masked,40,255,cv.THRESH_BINARY)[1] # might remove: + cv.thresh_otsu
-    # morph_open = cv.morphologyEx(binary,cv.MORPH_OPEN,kernel)
-    # morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
-    # dilated = cv.dilate(morph_close,kernel)
+    mask_blank = np.zeros_like(gray,dtype='uint8') # ,dtype='uint8'
+    # x,y,w,h = 140,70,200,150 # after resizing frame size. UPDATE THIS
+    # x,y,w,h = 350,280,200,110 # after resizing frame size. UPDATE THIS
+    x,y,w,h = 0,0,frame.shape[1],frame.shape[0] # no cropping, using all of it for now. 
+    rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
+    masked = cv.bitwise_and(gray,gray,mask=rect)
+    binary = cv.threshold(masked,40,255,cv.THRESH_BINARY)[1] # might remove: + cv.thresh_otsu
+    morph_open = cv.morphologyEx(binary,cv.MORPH_OPEN,kernel)
+    morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
+    dilated = cv.dilate(morph_close,kernel)
 
-    return gray
+    return dilated
 
 def fish_calib_params():
 
@@ -137,7 +109,7 @@ def fish_calib_params():
     # another function is np.savez_compressed() - what is the difference?? 
     # return DIM,K,D
     
-def webcam_process(frame,a,b,c,width,height): # a,b,c blank parameters
+def webcam_process(frame,width,height,a,b): # a,b blank parameters
     frame = cv.resize(frame,(int(width/2),int(height/2)))
     kernel = np.ones((5,5),np.uint8)
     gray = cv.cvtColor(frame,cv.COLOR_RGB2GRAY)
@@ -203,6 +175,8 @@ def main():
         print('Invalid input.')
         exit()
     
+    map1, map2 = cv.fisheye.initUndistortRectifyMap(K, D, np.eye(3), K, DIM, cv.CV_16SC2)
+    
     # user input: select webcam or fibrescope
     switcher = {
         'f': fibrescope_process,
@@ -213,7 +187,7 @@ def main():
     img_process = switcher.get(img_process_selector)
     
     # for p in sys.argv[1:]:
-    ref_frame_filt = img_process(ref_frame,DIM,K,D,width,height)
+    ref_frame_filt = img_process(ref_frame,width,height,map1,map2)
     
     cv.imshow('Raw ref_frame, press key to exit',ref_frame)
     cv.imshow('Filtered ref_frame, press key to exit', ref_frame_filt)
@@ -223,7 +197,7 @@ def main():
         ret, frame = cap.read()
         if not ret: break
         cv.imshow('Raw video',frame)
-        frame_filt = img_process(frame,DIM,K,D,width,height)
+        frame_filt = img_process(frame,width,height,map1,map2)
         cv.imshow('Filtered video from '+img_process_selector,frame_filt)
         
         if cv.waitKey(10) & 0xFF == ord('q'):
