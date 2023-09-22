@@ -1,8 +1,3 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*- 
-
-# above two lines not needed here as ROS is not being used here. 
-
 import cv2 as cv
 import numpy as np
 import os
