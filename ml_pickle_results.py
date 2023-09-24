@@ -26,30 +26,43 @@ web_gnd_truth = np.loadtxt('outputs/ground_truth_web.csv', delimiter=',')
 # frame transformations for franka_ee_pos, with respect to mannequin head origin.  
 x_offset, y_offset, z_offset = 20, 0, 68 # mm
 
-
 # select datasetand scale:
 # selectdataset = input('Which dataset? Enter a number(1 - BD, 2 - LK, 3 - GF): ')
-whichdata_web = make_pipeline(StandardScaler(),...) # how to use make_pipeline to scale data?? finish this section. 
+whichdata_web = data_lk_web
 whichdata_fib = data_lk_fibre
 
 # split data into training, testing and validation sets
 web_X_train, web_X_test, web_y_train, web_y_test = train_test_split(whichdata_web, web_gnd_truth, test_size=0.3,random_state=109) # 70% training and 30% test
 fib_X_train, fib_X_test, fib_y_train, fib_y_test = train_test_split(whichdata_fib, fib_gnd_truth, test_size=0.3,random_state=109) # 70% training and 30% test
 
-# define model:
-web_clf_svm = svm.SVC(kernel='rbf') # RBF Kernel. model 1: SVM webcam
-fib_clf_svm = svm.SVC(kernel='rbf') # RBF Kernel. model 1: SVM fibrescope
+# define model1 SVM:
+web_clf_svm = svm.SVC(kernel='rbf', C=1, gamma=0.0, coef0=0.0, shrinking=True, probability=False,tol=0.001, cache_size=200, class_weight=None, verbose=False, max_iter=-1, random_state=None) # RBF Kernel. model 1: SVM webcam
+fib_clf_svm = svm.SVC(kernel='rbf', C=1 ,gamma=0.0, coef0=0.0, shrinking=True, probability=False,tol=0.001, cache_size=200, class_weight=None, verbose=False, max_iter=-1, random_state=None) # RBF Kernel. model 1: SVM fibrescope
+
+# define model2 Naive Bayes: 
+web_clf_bayes = ...
+fib_clf_bayes = ...
+
+# 0 <= gamma <= 1. Closer to one causes overfitting the data. 
+# C is the regularization parameter of the error term. The higher the value of C, the more regularization is applied. Maimum value is 1, Minimum value is 0. 
+
+# create pipeline to standarsize data, and fit model
+model_select = input('Which model? Enter a number(1 - SVM, 2 - Logistic regression, 3 - Naive Bayes): ')
+chosen_model_web = ... # switch case
+chosen_model_fib = ... # switch case
+pipe_web = make_pipeline(StandardScaler(), chosen_model_web)
+pipe_fib = make_pipeline(StandardScaler(), chosen_model_fib)
 
 # fit model: train ML models for each data set
-web_clf_svm.fit(web_X_train, web_y_train)
-fib_clf_svm.fit(fib_X_train, fib_y_train) 
+pipe_web.fit(web_X_train, web_y_train)
+pipe_fib.fit(fib_X_train, fib_y_train) 
 
 # confusioin matrix on training data 
 
 
 # test model: test ML models for each data set
-web_y_pred_svm = web_clf_svm.predict(web_X_test)
-fib_y_pred_svm = fib_clf_svm.predict(fib_X_test)
+web_y_pred_svm = pipe_web.predict(web_X_test)
+fib_y_pred_svm = pipe_fib.predict(fib_X_test)
 
 # confusion matrix on testing data
 
