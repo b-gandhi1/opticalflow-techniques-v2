@@ -6,9 +6,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from sklearn import svm
+# from sklearn import svm
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
+from sklearn.naive_bayes import GaussianNB
 
 # load pickle data from outputs folder 
 # data_bd_web = pickle.load( open( "outputs/bd_web.pkl", "rb" ) )
@@ -36,8 +37,8 @@ web_X_train, web_X_test, web_y_train, web_y_test = train_test_split(whichdata_we
 fib_X_train, fib_X_test, fib_y_train, fib_y_test = train_test_split(whichdata_fib, fib_gnd_truth, test_size=0.3,random_state=109) # 70% training and 30% test
 
 # define model1 SVM:
-web_clf_svm = svm.SVC(kernel='rbf', C=1, gamma=0.0, coef0=0.0, shrinking=True, probability=False,tol=0.001, cache_size=200, class_weight=None, verbose=False, max_iter=-1, random_state=None) # RBF Kernel. model 1: SVM webcam
-fib_clf_svm = svm.SVC(kernel='rbf', C=1 ,gamma=0.0, coef0=0.0, shrinking=True, probability=False,tol=0.001, cache_size=200, class_weight=None, verbose=False, max_iter=-1, random_state=None) # RBF Kernel. model 1: SVM fibrescope
+# web_clf_svm = svm.SVC(kernel='rbf', C=1, gamma=0.0, coef0=0.0, shrinking=True, probability=False,tol=0.001, cache_size=200, class_weight=None, verbose=False, max_iter=-1, random_state=None) # RBF Kernel. model 1: SVM webcam
+# fib_clf_svm = svm.SVC(kernel='rbf', C=1 ,gamma=0.0, coef0=0.0, shrinking=True, probability=False,tol=0.001, cache_size=200, class_weight=None, verbose=False, max_iter=-1, random_state=None) # RBF Kernel. model 1: SVM fibrescope
 
 # define model2 Naive Bayes: 
 web_clf_bayes = ...
@@ -47,11 +48,8 @@ fib_clf_bayes = ...
 # C is the regularization parameter of the error term. The higher the value of C, the more regularization is applied. Maimum value is 1, Minimum value is 0. 
 
 # create pipeline to standarsize data, and fit model
-model_select = input('Which model? Enter a number(1 - SVM, 2 - Logistic regression, 3 - Naive Bayes): ')
-chosen_model_web = ... # switch case
-chosen_model_fib = ... # switch case
-pipe_web = make_pipeline(StandardScaler(), chosen_model_web)
-pipe_fib = make_pipeline(StandardScaler(), chosen_model_fib)
+pipe_web = make_pipeline(StandardScaler(), web_clf_bayes)
+pipe_fib = make_pipeline(StandardScaler(), fib_clf_bayes)
 
 # fit model: train ML models for each data set
 pipe_web.fit(web_X_train, web_y_train)
