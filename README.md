@@ -36,5 +36,5 @@ Numpy also needs to be installed.
   * Or scrap using this altogether. 
 * ML: 
   * SVM will no longer be used since it is deterministic. 
-  * Naive Bayes has been used before but I do not understand this since all the examples for it are based on categorical I/O. 
+  * Naive Bayes GaussianNB to be used.
   * Coding still needs to happen... 
