@@ -8,14 +8,14 @@ DESIREDWIDTH = 640
 DESIREDHEIGHT = 480
 
 # read video
-vid_path = 'data collection with franka/B07LabTrials/sample.mp4'
+vid_path = 'data collection with franka/B07LabTrials/sample_15000_250.mp4'
 cap = cv.VideoCapture(vid_path)
 
 FPS = cap.get(cv.CAP_PROP_FPS)
 tot_frames = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
 
 # image enhancement parameters: 
-contrast = 100
+contrast = 20
 brightness = 10
 
 for _ in range(tot_frames):
@@ -23,7 +23,7 @@ for _ in range(tot_frames):
     if not ret:
         print('ERROR: Cannot get frame.')
         break
-    frame = cv.resize(frame,(DESIREDWIDTH,DESIREDHEIGHT)) # resize frame to fit on screen
+    # frame = cv.resize(frame,(DESIREDWIDTH,DESIREDHEIGHT)) # resize frame to fit on screen
     
     # increase brightness 
     # bright_frame = np.int16(frame) + 100 
