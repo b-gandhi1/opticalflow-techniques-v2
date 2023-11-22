@@ -15,9 +15,10 @@ Numpy also needs to be installed.
 
 ## Instructions to run `opticalflow.py`
 1. Activate virtual env. 
-2. Run the file by `python opticalflow.py`. 
-3. It requires user input to enter video path, and selection of 'webcam' or 'fibrescope'. Follow prompts. 
-4. See results! 
+2. Run the file by `python opticalflow.py <s> <path>`. 
+3. s = `f` for fibrescope or `w` for webcam. 
+4. path = path to video that is to be processed. 
+5. See results! 
 
 ## Instructions to run `trial_img_process_calib.py`
 1. Activate venv

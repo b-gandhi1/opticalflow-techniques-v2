@@ -6,15 +6,17 @@ import pickle # save 3D data from the different algorithms
 import time
 import os
 import glob
+import sys
 
 # from pyOpticalFlow import getimgsfiles # from: pip install pyoptflow
 
-def fibrescope_process(cap,frame):
+# def fibrescope_process(cap,frame):
+def fibrescope_process(frame):
 
-    width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
+    # width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
+    # height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
 
-    frame = cv.resize(frame,(int(width/2),int(height/2)),)
+    # frame = cv.resize(frame,(int(width/2),int(height/2)),)
 
     kernel = np.ones((3,3),np.uint8)
     gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
@@ -29,19 +31,20 @@ def fibrescope_process(cap,frame):
 
     return dilated
 
-def fish_undistort(ref_frame,checkboard):
-    # checkboard = imread()
-    # calibrate the camera
+# def fish_undistort(ref_frame,checkboard):
+#     # checkboard = imread()
+#     # calibrate the camera
 
-    # return calib_params # calibration parameters, which will be used in fibrescope_process. 
+#     # return calib_params # calibration parameters, which will be used in fibrescope_process. 
 
-    pass 
-def webcam_process(cap,frame):
+#     pass 
+# def webcam_process(cap,frame):
+def webcam_process(frame):
 
-    width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
+    # width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
+    # height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
 
-    frame = cv.resize(frame,(int(width/2),int(height/2)),)
+    # frame = cv.resize(frame,(int(width/2),int(height/2)),)
 
     kernel = np.ones((5,5),np.uint8)
     gray = cv.cvtColor(frame,cv.COLOR_RGB2GRAY)
@@ -63,7 +66,7 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
         ret, frame = cap.read()
         if not ret: break 
 
-        frame_filt = img_process(cap,frame)
+        frame_filt = img_process(frame) # was: (cap,frame)
         # cv.imshow('FILTERED + CROPPED',frame_filt)
 
         # LK OF parameters: 
@@ -124,7 +127,7 @@ def OF_GF(cap,ref_frame,img_process,savefilename,mask): # Gunnar-Farneback, dens
     while True:
         ret, frame = cap.read()
         if not ret: break
-        frame_filt = img_process(cap,frame)
+        frame_filt = img_process(frame) # was: (cap,frame)
         flow = cv.calcOpticalFlowFarneback(ref_frame,frame_filt,None,pyr_scale=0.5,levels=2,winsize=3,iterations=2,poly_n=5,poly_sigma=1.1,flags=0) # what do these parameters mean?? 
         # explain - https://docs.opencv.org/3.0-beta/modules/video/doc/motion_analysis_and_object_tracking.html 
         mag, ang = cv.cartToPolar(flow[..., 0], flow[..., 1])
@@ -176,7 +179,7 @@ def blobdetect(cap,img_process,savefilename):
         ret, frame = cap.read()
         if not ret: break
 
-        frame = img_process(cap,frame) # binarize frame
+        frame = img_process(frame) # binarize frame. was: (cap,frame)
     
         keypoints = detector.detect(frame) # detect blobs
         centroids = np.array([keypoint.pt for keypoint in keypoints]) # extract centroids of blobs
@@ -204,10 +207,10 @@ def blobdetect(cap,img_process,savefilename):
 
 
 
-def main():
+def main(img_process_selector,path):
     # read video opencv
-    video_path = input('Enter input video path: ')
-    cap = cv.VideoCapture(video_path) # insert video path
+    # video_path = input('Enter input video path: ')
+    cap = cv.VideoCapture(path) # insert video path
     if not cap.isOpened(): print("ERROR: Cannot open camera/video file.")
 
     # # set size
@@ -218,10 +221,10 @@ def main():
     ret, ref_frame = cap.read()
     if not ret: print('ERROR: Cannot get frame.')
     
-    width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
+    # width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
+    # height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
 
-    ref_frame = cv.resize(ref_frame,(int(width/2),int(height/2)),)
+    # ref_frame = cv.resize(ref_frame,(int(width/2),int(height/2)),)
     mask_GF = np.zeros_like(ref_frame) # parameter for GF
 
     # user input: select webcam or fibrescope
@@ -229,43 +232,39 @@ def main():
         'f': fibrescope_process,
         'w': webcam_process
     }
-    img_process_selector = input("Select process, 'w' for webcam, and 'f' for fibrescope: ")
+    # img_process_selector = input("Select process, 'w' for webcam, and 'f' for fibrescope: ")
     print('Process selected: ', img_process_selector)
     img_process = switcher.get(img_process_selector)
     cv.imshow('reference frame before filtering',ref_frame)
-    ref_frame = img_process(cap,ref_frame)
+    ref_frame = img_process(ref_frame) # was: (cap,ref_frame)
     cv.imshow('reference frame after filtering',ref_frame)
     # filenames to save output data: 
-    savefilename_LK = input('Enter filename to save the current trial for OF_LK:')
-    savefilename_GF = input('Enter filename to save the current trial for OF_GF:')
-    savefilename_BD = input('Enter filename to save the current trial for blobdetect:')
-    # ensure path = outputs/filenames.pkl
-    savefilename_LK = 'outputs/'+savefilename_LK+'.pkl'
-    savefilename_GF = 'outputs/'+savefilename_GF+'.pkl'
-    savefilename_BD = 'outputs/'+savefilename_BD+'.pkl'
+    savefilename_LK = os.join('outputs','LK_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    savefilename_GF = os.join('outputs','GF_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    savefilename_BD = os.join('outputs','BD_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
 
-    # multiprocess the 4 methods together
-    OF_LK_process = mp.Process(target=OF_LK, args=(cap,ref_frame,img_process,savefilename_LK))
-    OF_GF_process = mp.Process(target=OF_GF, args=(cap,ref_frame,img_process,savefilename_GF,mask_GF))
-    # OF_HS_process = mp.Process(target=OF_HS, args=(cap,ref_frame,img_process))
-    blobdetect_process = mp.Process(target=blobdetect, args=(cap,img_process,savefilename_BD))
+    # # multiprocess the 4 methods together
+    # OF_LK_process = mp.Process(target=OF_LK, args=(cap,ref_frame,img_process,savefilename_LK))
+    # OF_GF_process = mp.Process(target=OF_GF, args=(cap,ref_frame,img_process,savefilename_GF,mask_GF))
+    # # OF_HS_process = mp.Process(target=OF_HS, args=(cap,ref_frame,img_process))
+    # blobdetect_process = mp.Process(target=blobdetect, args=(cap,img_process,savefilename_BD))
 
     try: 
-        # start multi-processes
-        OF_LK_process.start()
-        OF_GF_process.start()
-        # OF_HS_process.start()
-        blobdetect_process.start()
+        # # start multi-processes
+        # OF_LK_process.start()
+        # OF_GF_process.start()
+        # # OF_HS_process.start()
+        # blobdetect_process.start()
 
-        # finish multi together
-        OF_LK_process.join()
-        OF_GF_process.join()
-        # OF_HS_process.join()
-        blobdetect_process.join()
-        print('All processes have finished.')
+        # # finish multi together
+        # OF_LK_process.join()
+        # OF_GF_process.join()
+        # # OF_HS_process.join()
+        # blobdetect_process.join()
+        # print('All processes have finished.')
         
         # not using multi-processing: 
-        # OF_LK(cap,ref_frame,img_process,savefilename_LK)
+        OF_LK(cap,ref_frame,img_process,savefilename_LK)
         # OF_GF(cap,ref_frame,img_process,savefilename_GF,mask_GF) # keeps gettig killed, due to RAM and CPU being saturated.
         # blobdetect(cap,img_process,savefilename_BD)
 
@@ -276,4 +275,6 @@ def main():
     cap.release()
     cv.destroyAllWindows()
 if __name__ == '__main__':
-    main()
+    img_process_selector = sys.argv[1]
+    path = sys.argv[2]
+    main(img_process_selector,path)

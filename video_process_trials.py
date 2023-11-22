@@ -8,15 +8,15 @@ DESIREDWIDTH = 640
 DESIREDHEIGHT = 480
 
 # read video
-vid_path = 'data collection with franka/B07LabTrials/sample_15000_250.mp4'
+vid_path = 'data collection with franka/B07LabTrials/sample_10000_200.mp4'
 cap = cv.VideoCapture(vid_path)
 
 FPS = cap.get(cv.CAP_PROP_FPS)
 tot_frames = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
 
 # image enhancement parameters: 
-contrast = 20
-brightness = 10
+contrast = 3
+brightness = 5
 
 for _ in range(tot_frames):
     ret, frame = cap.read()
@@ -37,7 +37,7 @@ for _ in range(tot_frames):
     if cv.waitKey(10) & 0xFF == ord('q'):
         print('Quitting...')
         break
-    time.sleep(1/FPS)
+    # time.sleep(1/FPS)
     
 cap.release()
 cv.destroyAllWindows()
