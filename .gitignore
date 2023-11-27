@@ -1,10 +1,10 @@
-data collection with franka/B07LabTrials
-data collection with franka/ViconLab/fibrescope/input
-data collection with franka/ViconLab/fibrescope/output
-data collection with franka/ViconLab/webcam/input
-data collection with franka/ViconLab/webcam/output
-data collection with franka/ViconLab/viconTrials/vicon/results
-data collection with franka/ViconLab/viconTrials/vicon/data/viconsystemfiles
+data_collection_with_franka/B07LabTrials
+data_collection_with_franka/ViconLab/fibrescope/input
+data_collection_with_franka/ViconLab/fibrescope/output
+data_collection_with_franka/ViconLab/webcam/input
+data_collection_with_franka/ViconLab/webcam/output
+data_collection_with_franka/ViconLab/viconTrials/vicon/results
+data_collection_with_franka/ViconLab/viconTrials/vicon/data/viconsystemfiles
 opticalflowenv
-data collection with franka/ViconLab/fibrescope/calibrationcheckboard
-outputs
+data_collection_with_franka/ViconLab/fibrescope/calibrationcheckboard
+OF_outputs

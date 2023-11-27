@@ -10,6 +10,10 @@ import sys
 
 # from pyOpticalFlow import getimgsfiles # from: pip install pyoptflow
 
+# fibrescope image enhancement parameters: 
+CONTRAST = 3
+BRIGHTNESS = 5
+
 # def fibrescope_process(cap,frame):
 def fibrescope_process(frame):
 
@@ -18,13 +22,15 @@ def fibrescope_process(frame):
 
     # frame = cv.resize(frame,(int(width/2),int(height/2)),)
 
-    kernel = np.ones((3,3),np.uint8)
+    kernel = np.ones((2,2),np.uint8)
     gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
     mask_blank = np.zeros_like(gray,dtype='uint8') # ,dtype='uint8'
-    x,y,w,h = 350,280,200,110 # after resizing frame size. 
-    rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
-    masked = cv.bitwise_and(gray,gray,mask=rect)
-    binary = cv.threshold(masked,10,255,cv.THRESH_BINARY)[1] # might remove: + cv.thresh_otsu
+    # x,y,w,h = 350,280,200,110 # after resizing frame size. 
+    # rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
+    circle = cv.circle(mask_blank, (430,215), 100, (255,255,255), -1)
+    masked = cv.bitwise_and(gray,gray,mask=circle)
+    brightened = cv.addWeighted(masked, CONTRAST, np.zeros(masked.shape, masked.dtype), 0, BRIGHTNESS)     
+    binary = cv.threshold(brightened,55,255,cv.THRESH_BINARY)[1] # might remove: + cv.thresh_otsu
     morph_open = cv.morphologyEx(binary,cv.MORPH_OPEN,kernel)
     morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
     dilated = cv.dilate(morph_close,kernel)
@@ -46,13 +52,13 @@ def webcam_process(frame):
 
     # frame = cv.resize(frame,(int(width/2),int(height/2)),)
 
-    kernel = np.ones((5,5),np.uint8)
+    kernel = np.ones((4,4),np.uint8)
     gray = cv.cvtColor(frame,cv.COLOR_RGB2GRAY)
     mask_blank = np.zeros_like(gray,dtype='uint8') # ,dtype='uint8'
-    x,y,w,h = 75,50,845,430 # (x,y) = top left params
+    x,y,w,h = 0,60,640,340 # (x,y) = top left params
     rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
     masked = cv.bitwise_and(gray,gray,mask=rect)
-    binary = cv.threshold(masked,50,255,cv.THRESH_BINARY+cv.THRESH_OTSU)[1] # might remove: + cv.thresh_otsu
+    binary = cv.threshold(masked,125,255,cv.THRESH_BINARY)[1] 
     morph_open = cv.morphologyEx(binary,cv.MORPH_OPEN,kernel)
     morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
     dilated = cv.dilate(morph_close,kernel)
@@ -62,30 +68,31 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
     
     data_history = []
     
+    # LK OF parameters: 
+    feature_params = dict( maxCorners = 100, # 100 max val, and works best
+                                qualityLevel = 0.01, # between 0 and 1. Lower numbers = higher quality level. 
+                                minDistance = 5, # distance in pixels between points being monitored. 
+                                blockSize = 5 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense. 
+
+    # Parameters for lucas kanade optical flow
+    lk_params = dict( winSize  = (45, 45),
+                    maxLevel = 2,
+                    criteria = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 100, 0.03))
+    
+    color = np.random.randint(0, 255, (100, 3)) # Create some random colors 
+        
+    p0 = cv.goodFeaturesToTrack(ref_frame, mask = None, **feature_params)
+    # cv.imshow('ref frame temp',ref_frame)
+    mask_OF = np.zeros_like(ref_frame)
+
+    cv.waitKey(0)
+    
     while True:
         ret, frame = cap.read()
         if not ret: break 
 
         frame_filt = img_process(frame) # was: (cap,frame)
         # cv.imshow('FILTERED + CROPPED',frame_filt)
-
-        # LK OF parameters: 
-        feature_params = dict( maxCorners = 100, # 100 max val, and works best
-                                    qualityLevel = 0.01, # between 0 and 1. Lower numbers = higher quality level. 
-                                    minDistance = 5, # distance in pixels between points being monitored. 
-                                    blockSize = 5 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense. 
-
-        # Parameters for lucas kanade optical flow
-        lk_params = dict( winSize  = (45, 45),
-                        maxLevel = 2,
-                        criteria = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03)) 
-
-        # Create some random colors
-        color = np.random.randint(0, 255, (100, 3))
-
-
-        p0 = cv.goodFeaturesToTrack(ref_frame, mask = None, **feature_params)
-        mask_OF = np.zeros_like(ref_frame)
         
         p1,st,err = cv.calcOpticalFlowPyrLK(ref_frame, frame_filt, p0, None, None, None,**lk_params)
         magnitude, angle = cv.cartToPolar(p1[..., 0], p1[..., 1])
@@ -207,10 +214,10 @@ def blobdetect(cap,img_process,savefilename):
 
 
 
-def main(img_process_selector,path):
+def main(img_process_selector,loadpath):
     # read video opencv
     # video_path = input('Enter input video path: ')
-    cap = cv.VideoCapture(path) # insert video path
+    cap = cv.VideoCapture(loadpath) # insert video path
     if not cap.isOpened(): print("ERROR: Cannot open camera/video file.")
 
     # # set size
@@ -239,9 +246,9 @@ def main(img_process_selector,path):
     ref_frame = img_process(ref_frame) # was: (cap,ref_frame)
     cv.imshow('reference frame after filtering',ref_frame)
     # filenames to save output data: 
-    savefilename_LK = os.join('outputs','LK_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
-    savefilename_GF = os.join('outputs','GF_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
-    savefilename_BD = os.join('outputs','BD_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    savefilename_LK = os.path.join('OF_outputs','LK_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    # savefilename_GF = os.path.join('OF_outputs','GF_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    savefilename_BD = os.path.join('OF_outputs','BD_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
 
     # # multiprocess the 4 methods together
     # OF_LK_process = mp.Process(target=OF_LK, args=(cap,ref_frame,img_process,savefilename_LK))
