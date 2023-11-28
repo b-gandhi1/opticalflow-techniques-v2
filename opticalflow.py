@@ -69,15 +69,26 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
     data_history = []
     
     # LK OF parameters: 
-    feature_params = dict( maxCorners = 100, # 100 max val, and works best
+    if img_process == webcam_process:
+        print('LK: Webcam')
+        feature_params = dict( maxCorners = 100, # 100 max val, and works best
                                 qualityLevel = 0.01, # between 0 and 1. Lower numbers = higher quality level. 
+                                minDistance = 20, # distance in pixels between points being monitored. 
+                                blockSize = 20 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense. 
+    elif img_process == fibrescope_process:
+        print('LK: Fibrescope')
+        feature_params = dict( maxCorners = 100, # 100 max val, and works best
+                                qualityLevel = 0.3, # between 0 and 1. Lower numbers = higher quality level. 
                                 minDistance = 5, # distance in pixels between points being monitored. 
-                                blockSize = 5 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense. 
-
+                                blockSize = 5 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense.
+    else:
+        print("ERROR: Please enter a valid argument for imaging method used.")
+        exit()
+        
     # Parameters for lucas kanade optical flow
     lk_params = dict( winSize  = (45, 45),
                     maxLevel = 2,
-                    criteria = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 100, 0.03))
+                    criteria = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
     
     color = np.random.randint(0, 255, (100, 3)) # Create some random colors 
         
@@ -85,16 +96,18 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
     # cv.imshow('ref frame temp',ref_frame)
     mask_OF = np.zeros_like(ref_frame)
 
-    cv.waitKey(0)
-    
-    while True:
+    p1,st,err = None,None,None
+        
+    while cap.isOpened():
         ret, frame = cap.read()
-        if not ret: break 
+        # if not ret: break 
 
         frame_filt = img_process(frame) # was: (cap,frame)
         # cv.imshow('FILTERED + CROPPED',frame_filt)
         
-        p1,st,err = cv.calcOpticalFlowPyrLK(ref_frame, frame_filt, p0, None, None, None,**lk_params)
+        # p1,st,err = cv.calcOpticalFlowPyrLK(ref_frame, frame_filt, p0, None, None, None,**lk_params)
+        p1,st,err = cv.calcOpticalFlowPyrLK(ref_frame, frame_filt, p0, p1, st, err,**lk_params)
+
         magnitude, angle = cv.cartToPolar(p1[..., 0], p1[..., 1])
         if p1 is not None:
             good_new = p1[st==1]
@@ -131,9 +144,9 @@ def OF_GF(cap,ref_frame,img_process,savefilename,mask): # Gunnar-Farneback, dens
 
     data_history = []
     
-    while True:
+    while cap.isOpened():
         ret, frame = cap.read()
-        if not ret: break
+        # if not ret: break
         frame_filt = img_process(frame) # was: (cap,frame)
         flow = cv.calcOpticalFlowFarneback(ref_frame,frame_filt,None,pyr_scale=0.5,levels=2,winsize=3,iterations=2,poly_n=5,poly_sigma=1.1,flags=0) # what do these parameters mean?? 
         # explain - https://docs.opencv.org/3.0-beta/modules/video/doc/motion_analysis_and_object_tracking.html 
@@ -182,9 +195,9 @@ def blobdetect(cap,img_process,savefilename):
 
     data_history = []
 
-    while True:
+    while cap.isOpened():
         ret, frame = cap.read()
-        if not ret: break
+        # if not ret: break
 
         frame = img_process(frame) # binarize frame. was: (cap,frame)
     
