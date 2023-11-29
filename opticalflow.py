@@ -23,7 +23,7 @@ def fibrescope_process(frame):
     # frame = cv.resize(frame,(int(width/2),int(height/2)),)
 
     kernel = np.ones((2,2),np.uint8)
-    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+    gray = cv.cvtColor(frame, cv.COLOR_RGB2GRAY)
     mask_blank = np.zeros_like(gray,dtype='uint8') # ,dtype='uint8'
     # x,y,w,h = 350,280,200,110 # after resizing frame size. 
     # rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
@@ -35,7 +35,7 @@ def fibrescope_process(frame):
     morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
     dilated = cv.dilate(morph_close,kernel)
 
-    return dilated
+    return masked
 
 # def fish_undistort(ref_frame,checkboard):
 #     # checkboard = imread()
@@ -63,7 +63,7 @@ def webcam_process(frame):
     morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
     dilated = cv.dilate(morph_close,kernel)
 
-    return dilated 
+    return masked 
 def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optical flow, local solution
     
     data_history = []
@@ -73,22 +73,30 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
         print('LK: Webcam')
         feature_params = dict( maxCorners = 100, # 100 max val, and works best
                                 qualityLevel = 0.01, # between 0 and 1. Lower numbers = higher quality level. 
-                                minDistance = 20, # distance in pixels between points being monitored. 
-                                blockSize = 20 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense. 
+                                minDistance = 30, # distance in pixels between points being monitored. 
+                                blockSize = 3 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense. 
+        lk_params = dict( winSize  = (45, 45),
+                    maxLevel = 2,
+                    criteria = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
+    
     elif img_process == fibrescope_process:
         print('LK: Fibrescope')
         feature_params = dict( maxCorners = 100, # 100 max val, and works best
-                                qualityLevel = 0.3, # between 0 and 1. Lower numbers = higher quality level. 
+                                qualityLevel = 0.01, # between 0 and 1. Lower numbers = higher quality level. 
                                 minDistance = 5, # distance in pixels between points being monitored. 
                                 blockSize = 5 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense.
+        lk_params = dict( winSize  = (45, 45),
+                    maxLevel = 2,
+                    criteria = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
+    
     else:
         print("ERROR: Please enter a valid argument for imaging method used.")
         exit()
         
     # Parameters for lucas kanade optical flow
-    lk_params = dict( winSize  = (45, 45),
-                    maxLevel = 2,
-                    criteria = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
+    # lk_params = dict( winSize  = (45, 45),
+    #                 maxLevel = 2,
+    #                 criteria = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
     
     color = np.random.randint(0, 255, (100, 3)) # Create some random colors 
         
@@ -98,9 +106,9 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
 
     p1,st,err = None,None,None
         
-    while cap.isOpened():
+    while True:
         ret, frame = cap.read()
-        # if not ret: break 
+        if not ret: break 
 
         frame_filt = img_process(frame) # was: (cap,frame)
         # cv.imshow('FILTERED + CROPPED',frame_filt)
@@ -144,9 +152,10 @@ def OF_GF(cap,ref_frame,img_process,savefilename,mask): # Gunnar-Farneback, dens
 
     data_history = []
     
-    while cap.isOpened():
+    while True:
         ret, frame = cap.read()
-        # if not ret: break
+        if not ret: break
+        
         frame_filt = img_process(frame) # was: (cap,frame)
         flow = cv.calcOpticalFlowFarneback(ref_frame,frame_filt,None,pyr_scale=0.5,levels=2,winsize=3,iterations=2,poly_n=5,poly_sigma=1.1,flags=0) # what do these parameters mean?? 
         # explain - https://docs.opencv.org/3.0-beta/modules/video/doc/motion_analysis_and_object_tracking.html 
@@ -195,9 +204,9 @@ def blobdetect(cap,img_process,savefilename):
 
     data_history = []
 
-    while cap.isOpened():
+    while True:
         ret, frame = cap.read()
-        # if not ret: break
+        if not ret: break
 
         frame = img_process(frame) # binarize frame. was: (cap,frame)
     
@@ -224,8 +233,6 @@ def blobdetect(cap,img_process,savefilename):
 
     with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
         pickle.dump(data_history, file)
-
-
 
 def main(img_process_selector,loadpath):
     # read video opencv
@@ -259,7 +266,7 @@ def main(img_process_selector,loadpath):
     ref_frame = img_process(ref_frame) # was: (cap,ref_frame)
     cv.imshow('reference frame after filtering',ref_frame)
     # filenames to save output data: 
-    savefilename_LK = os.path.join('OF_outputs','LK_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    savefilename_LK = os.path.join('OF_outputs','LK_gray_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
     # savefilename_GF = os.path.join('OF_outputs','GF_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
     savefilename_BD = os.path.join('OF_outputs','BD_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
 
