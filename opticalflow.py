@@ -100,7 +100,8 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
     
     color = np.random.randint(0, 255, (100, 3)) # Create some random colors 
         
-    p0 = cv.goodFeaturesToTrack(ref_frame, mask = None, **feature_params)
+    # p0 = cv.goodFeaturesToTrack(ref_frame, mask = None, **feature_params) # Shi-Tomasi corner detection
+    p0 = cv.cornerHarris(ref_frame, 10,10,0.3) # Harris corner detection, ERROR. figure out how to use this!! 
     # cv.imshow('ref frame temp',ref_frame)
     mask_OF = np.zeros_like(ref_frame)
 
