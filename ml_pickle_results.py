@@ -12,6 +12,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.naive_bayes import GaussianNB
 from sklearn.metrics import (accuracy_score, confusion_matrix, ConfusionMatrixDisplay, f1_score, classification_report, roc_curve, auc)
 # use torch instead of sklearn, numpy, and pandas - more efficient. 
+import torch 
 
 # load pickle data from outputs folder 
 def bd_data_loader():
@@ -97,9 +98,9 @@ print('F1 score: ' + str(web_f1) + '\t' + str(fib_f1))
 # save results, csv tables and svg images 
 np.savetxt('outputs/results.txt', accuracyf1, delimiter='\n')
 
-# save the models
-pickle.dump(pipe_web, open( "outputs/web_GNB.sav", "wb" ) )
-pickle.dump(pipe_fib, open( "outputs/fib_GNB.sav", "wb" ) )
+# save models using pytorch
+torch.save(pipe_web, 'outputs/web_GNB.pt')
+torch.save(pipe_fib, 'outputs/fib_GNB.pt')
 
 # To load models and get results, use: --------------------------------
 # load_model_web = pickle.load( open( "outputs/web_GNB.sav", "rb" ) )

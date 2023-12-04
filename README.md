@@ -39,3 +39,6 @@ Numpy also needs to be installed.
   * SVM will no longer be used since it is deterministic. 
   * Naive Bayes GaussianNB to be used.
   * Coding still needs to happen... 
+* Corner detection: 
+  * Works fine on grayscale for webcam, NOT on binary webcam. Still needs tweaking... 
+  * Done for fibrescope videos: gray, bright, and binary. 

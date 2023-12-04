@@ -63,7 +63,7 @@ def webcam_process(frame):
     morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
     dilated = cv.dilate(morph_close,kernel)
 
-    return masked 
+    return dilated 
 def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optical flow, local solution
     
     data_history = []
@@ -71,20 +71,24 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
     # LK OF parameters: 
     if img_process == webcam_process:
         print('LK: Webcam')
-        feature_params = dict( maxCorners = 100, # 100 max val, and works best
-                                qualityLevel = 0.01, # between 0 and 1. Lower numbers = higher quality level. 
-                                minDistance = 30, # distance in pixels between points being monitored. 
-                                blockSize = 3 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense. 
+        feature_params = dict( maxCorners = 700, 
+                                qualityLevel = 0.15, # between 0 and 1. Lower numbers = higher quality level. 
+                                minDistance = 25.0, # distance in pixels between points being monitored. 
+                                blockSize = 5,
+                                useHarrisDetector = False, 
+                                k = 0.04 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense. 
         lk_params = dict( winSize  = (45, 45),
                     maxLevel = 2,
                     criteria = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
     
     elif img_process == fibrescope_process:
         print('LK: Fibrescope')
-        feature_params = dict( maxCorners = 100, # 100 max val, and works best
+        feature_params = dict( maxCorners = 100, 
                                 qualityLevel = 0.01, # between 0 and 1. Lower numbers = higher quality level. 
-                                minDistance = 5, # distance in pixels between points being monitored. 
-                                blockSize = 5 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense.
+                                minDistance = 5.0, # distance in pixels between points being monitored. 
+                                blockSize = 3,
+                                useHarrisDetector = False, # Shi-Tomasi better for corner detection than Harris for fibrescope. 
+                                k = 0.04 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense.
         lk_params = dict( winSize  = (45, 45),
                     maxLevel = 2,
                     criteria = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
@@ -98,10 +102,10 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
     #                 maxLevel = 2,
     #                 criteria = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
     
-    color = np.random.randint(0, 255, (100, 3)) # Create some random colors 
+    color = np.random.randint(0, 255, (500, 3)) # Create some random colors 
         
-    # p0 = cv.goodFeaturesToTrack(ref_frame, mask = None, **feature_params) # Shi-Tomasi corner detection
-    p0 = cv.cornerHarris(ref_frame, 10,10,0.3) # Harris corner detection, ERROR. figure out how to use this!! 
+    p0 = cv.goodFeaturesToTrack(ref_frame, mask = None, **feature_params) # Shi-Tomasi corner detection
+    # p0 = cv.cornerHarris(ref_frame, 10,10,0.3) # Harris corner detection, ERROR. figure out how to use this!! 
     # cv.imshow('ref frame temp',ref_frame)
     mask_OF = np.zeros_like(ref_frame)
 
@@ -267,7 +271,7 @@ def main(img_process_selector,loadpath):
     ref_frame = img_process(ref_frame) # was: (cap,ref_frame)
     cv.imshow('reference frame after filtering',ref_frame)
     # filenames to save output data: 
-    savefilename_LK = os.path.join('OF_outputs','LK_gray_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    savefilename_LK = os.path.join('OF_outputs','LK_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
     # savefilename_GF = os.path.join('OF_outputs','GF_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
     savefilename_BD = os.path.join('OF_outputs','BD_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
 

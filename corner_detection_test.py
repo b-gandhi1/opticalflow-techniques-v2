@@ -14,14 +14,27 @@ def shiTomasi(fibrescope,webcam):
     gray_fib = cv.cvtColor(fibrescope,cv.COLOR_BGR2GRAY) # Converting to grayscale
     gray_web = cv.cvtColor(webcam,cv.COLOR_BGR2GRAY)
     
-    corners_fib = cv.goodFeaturesToTrack(gray_fib,1000,0.01,10) #Specifying maximum number of corners as 1000
+    fib_features = dict( maxCorners = 100, # 100 max val, and works best
+                            qualityLevel = 0.01, # between 0 and 1. Lower numbers = higher quality level. 
+                            minDistance = 5.0, # distance in pixels between points being monitored. 
+                            blockSize = 3,
+                            useHarrisDetector = False, # Shi-Tomasi better for corner detection than Harris for fibrescope. 
+                            k = 0.04 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense.
+    web_features = dict( maxCorners = 1000, # 100 max val, and works best
+                            qualityLevel = 0.01, # between 0 and 1. Lower numbers = higher quality level. 
+                            minDistance = 20.0, # distance in pixels between points being monitored. 
+                            blockSize = 3,
+                            useHarrisDetector = False, 
+                            k = 0.04 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense. 
+
+    corners_fib = cv.goodFeaturesToTrack(gray_fib, mask = None, **fib_features) #Specifying maximum number of corners as 1000
     # 0.01 is the minimum quality level below which the corners are rejected
     # 10 is the minimum euclidean distance between two corners
 
-    corners_web = cv.goodFeaturesToTrack(gray_web,1000,0.01,10)
+    corners_web = cv.goodFeaturesToTrack(gray_web,mask = None, **web_features)
     
-    corners_fib = np.int0(corners_fib)
-    corners_web = np.int0(corners_web)
+    corners_fib = np.intp(corners_fib)
+    corners_web = np.intp(corners_web)
     
     for corners in corners_fib:
         
@@ -44,7 +57,7 @@ def harris(fibrescope,webcam):
     
     gray_fib = np.float32(gray_fib) # Conversion to float is a prerequisite for the algorithm
     gray_web = np.float32(gray_web)
-    
+
     corners_fib = cv.cornerHarris(gray_fib,3,3,0.04) # 3 is the size of the neighborhood considered, aperture parameter = 3
     # k = 0.04 used to calculate the window score (R)
     corners_web = cv.cornerHarris(gray_web,3,3,0.04)
