@@ -40,5 +40,7 @@ Numpy also needs to be installed.
   * Naive Bayes GaussianNB to be used.
   * Coding still needs to happen... 
 * Corner detection: 
-  * Works fine on grayscale for webcam, NOT on binary webcam. Still needs tweaking... 
-  * Done for fibrescope videos: gray, bright, and binary. 
+  * Works fine on grayscale for webcam, NOT on binary webcam. 
+    * this works now. changed ref_frame from 0 to 7. 
+  * Done for fibrescope videos: gray, bright, and binary.
+* Blob detection on fibrescope keeps failing. Needs some parameters adjusting...  

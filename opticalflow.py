@@ -35,7 +35,7 @@ def fibrescope_process(frame):
     morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
     dilated = cv.dilate(morph_close,kernel)
 
-    return masked
+    return dilated
 
 # def fish_undistort(ref_frame,checkboard):
 #     # checkboard = imread()
@@ -195,7 +195,7 @@ def blobdetect(cap,img_process,savefilename):
 
     params = cv.SimpleBlobDetector_Params() # create blob detector
     params.filterByColor = True # changs min and max thresholds for tuning. 
-    params.minThreshold = 90 
+    params.minThreshold = 120 
     params.maxThreshold = 170 
     params.blobColor = 255
     params.filterByArea = False
@@ -250,8 +250,11 @@ def main(img_process_selector,loadpath):
     # cap.set(cv.CAP_PROP_FRAME_HEIGHT,480)
     
     # take reference frame 
+    if img_process_selector == 'w':
+        cap.set(cv.CAP_PROP_POS_FRAMES, 7) # since first ref frame is messy for some reason.. does not cover all pins in binary verison. 
     ret, ref_frame = cap.read()
     if not ret: print('ERROR: Cannot get frame.')
+    cap.set(cv.CAP_PROP_POS_FRAMES, 0) # reset back. 
     
     # width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
     # height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
@@ -273,7 +276,7 @@ def main(img_process_selector,loadpath):
     # filenames to save output data: 
     savefilename_LK = os.path.join('OF_outputs','LK_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
     # savefilename_GF = os.path.join('OF_outputs','GF_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
-    savefilename_BD = os.path.join('OF_outputs','BD_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    savefilename_BD = os.path.join('OF_outputs','BD_gray_fib_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
 
     # # multiprocess the 4 methods together
     # OF_LK_process = mp.Process(target=OF_LK, args=(cap,ref_frame,img_process,savefilename_LK))
