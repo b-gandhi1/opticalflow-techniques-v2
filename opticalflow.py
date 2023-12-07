@@ -35,7 +35,7 @@ def fibrescope_process(frame):
     morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
     dilated = cv.dilate(morph_close,kernel)
 
-    return dilated
+    return brightened
 
 # def fish_undistort(ref_frame,checkboard):
 #     # checkboard = imread()
@@ -195,7 +195,11 @@ def blobdetect(cap,img_process,savefilename):
 
     params = cv.SimpleBlobDetector_Params() # create blob detector
     params.filterByColor = True # changs min and max thresholds for tuning. 
-    params.minThreshold = 120 
+    if img_process == fibrescope_process:
+        params.minThreshold = 50
+    if img_process == webcam_process:
+        params.minThreshold = 120
+    # params.minThreshold = ... # 50 # 120 
     params.maxThreshold = 170 
     params.blobColor = 255
     params.filterByArea = False
@@ -299,9 +303,9 @@ def main(img_process_selector,loadpath):
         # print('All processes have finished.')
         
         # not using multi-processing: 
-        OF_LK(cap,ref_frame,img_process,savefilename_LK)
+        # OF_LK(cap,ref_frame,img_process,savefilename_LK)
         # OF_GF(cap,ref_frame,img_process,savefilename_GF,mask_GF) # keeps gettig killed, due to RAM and CPU being saturated.
-        # blobdetect(cap,img_process,savefilename_BD)
+        blobdetect(cap,img_process,savefilename_BD)
 
     except KeyboardInterrupt:
         print('*****ERROR: Manually interrupted*****')

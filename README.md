@@ -25,6 +25,16 @@ Numpy also needs to be installed.
 2. Run the file by `python trial_img_process_calib.py`
 3. It requires user input to enter video path, if it requires calibration (Y/N), and selection of 'webcam' or 'fibrescope'. Follow prompts. 
    * Note: the calibration is only required for fibrescope. If N selected, it is assumed that the calibration files already exist. The path for these may need updating in the code.
+
+## Instrucitons to run `ml_pickle_results.py`
+* Command format: `python ml_pickle_results.py <whichmodel>`
+* In whichmodel, pass one of the following options: 
+  1. bd_bin
+  2. bd_gray
+  3. lk_bin
+  4. lk_gray
+
+
 ## Folder structure
 * Debugging with vscode file: `launch.json `
 * Get data from: `opticalflow.py`
@@ -41,6 +51,6 @@ Numpy also needs to be installed.
   * Coding still needs to happen... 
 * Corner detection: 
   * Works fine on grayscale for webcam, NOT on binary webcam. 
-    * this works now. changed ref_frame from 0 to 7. 
+    * This works now. Changed ref_frame from 0 to 7. 
   * Done for fibrescope videos: gray, bright, and binary.
 * Blob detection on fibrescope keeps failing. Needs some parameters adjusting...  
