@@ -19,6 +19,9 @@ import sys
 def bd_data_loader_gray():
     data_bd_web = pickle.load( open( "OF_outputs/BD_gray_web1_2023-12-06_16-57-23.pkl", "rb" ) )
     data_bd_fibre = pickle.load( open( "OF_outputs/BD_gray_fib1_2023-12-07_12-30-19.pkl", "rb" ) )
+    bd_web_item_pairs = data_bd_web.items()
+    bd_fibre_item_pairs = data_bd_fibre.items()
+    
     return data_bd_web, data_bd_fibre
 
 def bd_data_loader_binary():
@@ -51,17 +54,24 @@ def main(whichmodel):
         # 'gf': gf_data_loader
     }
 
-    # choose_data_loader = input("Which dataset? Enter an option: 'BD', 'LK', 'GF'): ")
     choose_data_loader = whichmodel
     chosen_loader = switcher.get(choose_data_loader)
     whichdata_web, whichdata_fib = chosen_loader()
 
+    print('Shape web: ', np.shape(whichdata_web))
+    print('Shape fib: ', np.shape(whichdata_fib))
+    
     # load ground truth data from franka, csv file 
     # fib_gnd_truth = np.loadtxt('outputs/ground_truth_fibre.csv', delimiter=',')
     fib_gnd_truth_df = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope1-20-Nov-2023--14-06-58.csv', delimiter=',')
+    fib_gnd_truth_df = fib_gnd_truth_df[1:] # remove first data point to match sizes
     # web_gnd_truth = np.loadtxt('outputs/ground_truth_web.csv', delimiter=',')
     web_gnd_truth_df = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam1-20-Nov-2023--15-56-11.csv', delimiter=',')
-
+    web_gnd_truth_df = web_gnd_truth_df[1:] # remove first data point to match sizes
+    
+    print('Shape web ground truth: ', np.shape(web_gnd_truth_df))
+    print('Shape fib ground truth: ', np.shape(fib_gnd_truth_df))
+    
     # frame transformations for franka_ee_pos, with respect to mannequin head origin.  
     x_offset, y_offset, z_offset = 68, 0, 20 # mm, Translation
     # and rotation? ...
@@ -84,7 +94,7 @@ def main(whichmodel):
     pipe_fib = make_pipeline(StandardScaler(), gnb)
 
     # fit model: train ML models for each data set
-    pipe_web.fit(web_X_train, web_y_train)
+    pipe_web.fit(web_X_train, web_y_train) # ERROR HERE with dict file format. 
     pipe_fib.fit(fib_X_train, fib_y_train) 
 
     # test model: test ML models for each data set
