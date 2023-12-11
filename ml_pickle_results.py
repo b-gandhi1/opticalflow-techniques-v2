@@ -17,26 +17,47 @@ import sys
 
 # load pickle data from outputs folder 
 def bd_data_loader_gray():
-    data_bd_web = pickle.load( open( "OF_outputs/BD_gray_web1_2023-12-06_16-57-23.pkl", "rb" ) )
-    data_bd_fibre = pickle.load( open( "OF_outputs/BD_gray_fib1_2023-12-07_12-30-19.pkl", "rb" ) )
-    bd_web_item_pairs = data_bd_web.items()
-    bd_fibre_item_pairs = data_bd_fibre.items()
+    bd_web = pickle.load( open( "OF_outputs/BD_gray_web1_2023-12-06_16-57-23.pkl", "rb" ) )
+    bd_fibre = pickle.load( open( "OF_outputs/BD_gray_fib1_2023-12-07_12-30-19.pkl", "rb" ) )
     
+    max_len_web = max(len(d['data']) for d in bd_web)
+    padded_web = [np.pad(d['data'], (0, max_len_web - len(d['data'])), mode='constant') for d in bd_web]
+    data_bd_web = np.asarray(padded_web)
+    
+    # for i in range(len(data_bd_web)): # test shapes to identify inhomogenity
+    #     print(data_bd_web[i].shape)
+        
+    max_len_fibre = max(len(d['data']) for d in bd_fibre)
+    padded_fibre = [np.pad(d['data'], (0, max_len_fibre - len(d['data'])), mode='constant') for d in bd_fibre]
+    data_bd_fibre = np.asarray(padded_fibre)
+        
     return data_bd_web, data_bd_fibre
 
 def bd_data_loader_binary():
-    data_bd_web = pickle.load( open( "OF_outputs/BD_binary_web1_2023-12-06_16-49-54.pkl", "rb" ) )
-    data_bd_fibre = pickle.load( open( "OF_outputs/BD_binary_fib1_2023-12-06_17-47-48.pkl", "rb" ) )
+    bd_web = pickle.load( open( "OF_outputs/BD_binary_web1_2023-12-06_16-49-54.pkl", "rb" ) )
+    bd_fibre = pickle.load( open( "OF_outputs/BD_binary_fib1_2023-12-06_17-47-48.pkl", "rb" ) )
+    
+    data_bd_web = np.asarray([d['data'] for d in bd_web])
+    data_bd_fibre = np.asarray([d['data'] for d in bd_fibre])
+    
     return data_bd_web, data_bd_fibre
 
 def lk_data_loader_gray():
-    data_lk_web = pickle.load( open( "OF_outputs/LK_gray_web1_2023-12-04_17-02-48.pkl", "rb" ) )
-    data_lk_fibre = pickle.load( open( "OF_outputs/LK_bright_fib1_2023-11-29_16-44-01.pkl", "rb" ) )
+    lk_web = pickle.load( open( "OF_outputs/LK_gray_web1_2023-12-04_17-02-48.pkl", "rb" ) )
+    lk_fibre = pickle.load( open( "OF_outputs/LK_bright_fib1_2023-11-29_16-44-01.pkl", "rb" ) )
+    
+    data_lk_web = np.asarray([d['data'] for d in lk_web])
+    data_lk_fibre = np.asarray([d['data'] for d in lk_fibre])
+    
     return data_lk_web, data_lk_fibre
 
 def lk_data_loader_binary():
-    data_lk_web = pickle.load( open( "OF_outputs/LK_binary_web1_2023-12-06_17-56-36.pkl", "rb" ) )
-    data_lk_fibre = pickle.load( open( "OF_outputs/LK_binary_fib1_2023-11-29_16-37-46.pkl", "rb" ) )
+    lk_web = pickle.load( open( "OF_outputs/LK_binary_web1_2023-12-06_17-56-36.pkl", "rb" ) )
+    lk_fibre = pickle.load( open( "OF_outputs/LK_binary_fib1_2023-11-29_16-37-46.pkl", "rb" ) )
+    
+    data_lk_web = np.asarray([d['data'] for d in lk_web])
+    data_lk_fibre = np.asarray([d['data'] for d in lk_fibre])
+    
     return data_lk_web, data_lk_fibre
 
 # def gf_data_loader():
