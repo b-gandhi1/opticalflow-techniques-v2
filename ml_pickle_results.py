@@ -8,8 +8,8 @@ import pandas as pd
 from sklearn.model_selection import train_test_split, cross_val_score, cross_validate
 # from sklearn import svm
 from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
-from sklearn.naive_bayes import GaussianNB
+from sklearn.preprocessing import StandardScaler, MultiLabelBinarizer
+from sklearn.naive_bayes import GaussianNB, MultinomialNB
 from sklearn.metrics import (accuracy_score, confusion_matrix, ConfusionMatrixDisplay, f1_score, classification_report, roc_curve, RocCurveDisplay, auc)
 # use torch instead of sklearn, numpy, and pandas - more efficient. 
 import torch 
@@ -120,16 +120,23 @@ def main(whichmodel):
     # 0 <= gamma <= 1. Closer to one causes overfitting the data. 
     # C is the regularization parameter of the error term. The higher the value of C, the more regularization is applied. Maimum value is 1, Minimum value is 0. 
 
-    gnb = GaussianNB() # define ML model1 Gaussian Naive Bayes
+    # gnb = GaussianNB() # define ML model1 Gaussian Naive Bayes
+    mnb = MultinomialNB() 
     # logReg = LogisticRegression() # define ML model2 Logistic Regression
 
     # create pipeline to standarsize data, and fit model
-    pipe_web = make_pipeline(StandardScaler(), gnb)
-    pipe_fib = make_pipeline(StandardScaler(), gnb)
+    pipe_web = make_pipeline(StandardScaler(), mnb)
+    pipe_fib = make_pipeline(StandardScaler(), mnb)
 
+    # binarize / flatten y values
+    mlb = MultiLabelBinarizer()
+    web_y_train_bin = mlb.fit_transform(web_y_train)
+    fib_y_train_bin = mlb.fit_transform(fib_y_train)
+     #STILL DOES NOT WORK TO MAKE IT 1D!............ *CRY*
+    
     # fit model: train ML models for each data set
-    pipe_web.fit(web_X_train, web_y_train) # ERROR HERE y must be 1d... 
-    pipe_fib.fit(fib_X_train, fib_y_train) 
+    pipe_web.fit(web_X_train, web_y_train_bin) # ERROR HERE y must be 1d... 
+    pipe_fib.fit(fib_X_train, fib_y_train_bin) 
 
     # test model: test ML models for each data set
     web_y_pred = pipe_web.predict(web_X_test)
@@ -174,8 +181,8 @@ def main(whichmodel):
     plt.show()
     
     # validation tests for all the models
-    scores_web = cross_val_score(gnb, web_X_test, web_y_test, cv=3)
-    scores_fib = cross_val_score(gnb, fib_X_test, fib_y_test, cv=3)
+    scores_web = cross_val_score(mnb, web_X_test, web_y_test, cv=3)
+    scores_fib = cross_val_score(mnb, fib_X_test, fib_y_test, cv=3)
     
     print('Webcam cross-validation accuracy: %0.2f  with standard deviaiton %0.2f' % (scores_web.mean(), scores_web.std())) 
     print('Fibrescope cross-validation accuracy: %0.2f  with standard deviaiton %0.2f' % (scores_fib.mean(), scores_fib.std()))
@@ -185,8 +192,8 @@ def main(whichmodel):
     # CONTINUE HERE....
     
     # save models using pytorch
-    torch.save(pipe_web, 'ML_results/web_GNB.pt')
-    torch.save(pipe_fib, 'ML_results/fib_GNB.pt')
+    torch.save(pipe_web, 'ML_results/web_MNB.pt')
+    torch.save(pipe_fib, 'ML_results/fib_MNB.pt')
 
     # To load models and get results, use: --------------------------------
     # load_model_web = pickle.load( open( "outputs/web_GNB.sav", "rb" ) )
