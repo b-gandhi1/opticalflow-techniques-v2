@@ -18,45 +18,56 @@ import sys
 # load pickle data from outputs folder 
 def bd_data_loader_gray():
     bd_web = pickle.load( open( "OF_outputs/BD_gray_web1_2023-12-06_16-57-23.pkl", "rb" ) )
-    bd_fibre = pickle.load( open( "OF_outputs/BD_gray_fib1_2023-12-07_12-30-19.pkl", "rb" ) )
-    
     max_len_web = max(len(d['data']) for d in bd_web)
     padded_web = [np.pad(d['data'], (0, max_len_web - len(d['data'])), mode='constant') for d in bd_web]
     data_bd_web = np.asarray(padded_web)
     
-    # for i in range(len(data_bd_web)): # test shapes to identify inhomogenity
-    #     print(data_bd_web[i].shape)
-        
+    bd_fibre = pickle.load( open( "OF_outputs/BD_gray_fib1_2023-12-07_12-30-19.pkl", "rb" ) )        
     max_len_fibre = max(len(d['data']) for d in bd_fibre)
     padded_fibre = [np.pad(d['data'], (0, max_len_fibre - len(d['data'])), mode='constant') for d in bd_fibre]
     data_bd_fibre = np.asarray(padded_fibre)
-        
+    
+    # for i in range(len(data_bd_web)): # test shapes to identify inhomogenity
+    #     print(data_bd_web[i].shape)
+    
     return data_bd_web, data_bd_fibre
 
 def bd_data_loader_binary():
     bd_web = pickle.load( open( "OF_outputs/BD_binary_web1_2023-12-06_16-49-54.pkl", "rb" ) )
-    bd_fibre = pickle.load( open( "OF_outputs/BD_binary_fib1_2023-12-06_17-47-48.pkl", "rb" ) )
+    max_len_web = max(len(d['data']) for d in bd_web)
+    padded_web = [np.pad(d['data'], (0, max_len_web - len(d['data'])), mode='constant') for d in bd_web]
+    data_bd_web = np.asarray(padded_web)
     
-    data_bd_web = np.asarray([d['data'] for d in bd_web])
-    data_bd_fibre = np.asarray([d['data'] for d in bd_fibre])
+    bd_fibre = pickle.load( open( "OF_outputs/BD_binary_fib1_2023-12-06_17-47-48.pkl", "rb" ) )
+    max_len_fibre = max(len(d['data']) for d in bd_fibre)
+    padded_fibre = [np.pad(d['data'], (0, max_len_fibre - len(d['data'])), mode='constant') for d in bd_fibre]
+    data_bd_fibre = np.asarray(padded_fibre)
     
     return data_bd_web, data_bd_fibre
 
 def lk_data_loader_gray():
     lk_web = pickle.load( open( "OF_outputs/LK_gray_web1_2023-12-04_17-02-48.pkl", "rb" ) )
-    lk_fibre = pickle.load( open( "OF_outputs/LK_bright_fib1_2023-11-29_16-44-01.pkl", "rb" ) )
+    max_len_web = max(len(d['data']) for d in lk_web)
+    padded_web = [np.pad(d['data'], (0, max_len_web - len(d['data'])), mode='constant') for d in lk_web]
+    data_lk_web = np.asarray(padded_web)
     
-    data_lk_web = np.asarray([d['data'] for d in lk_web])
-    data_lk_fibre = np.asarray([d['data'] for d in lk_fibre])
+    lk_fibre = pickle.load( open( "OF_outputs/LK_bright_fib1_2023-11-29_16-44-01.pkl", "rb" ) )
+    max_len_fibre = max(len(d['data']) for d in lk_fibre)
+    padded_fibre = [np.pad(d['data'], (0, max_len_fibre - len(d['data'])), mode='constant') for d in lk_fibre]
+    data_lk_fibre = np.asarray(padded_fibre)
     
     return data_lk_web, data_lk_fibre
 
 def lk_data_loader_binary():
     lk_web = pickle.load( open( "OF_outputs/LK_binary_web1_2023-12-06_17-56-36.pkl", "rb" ) )
-    lk_fibre = pickle.load( open( "OF_outputs/LK_binary_fib1_2023-11-29_16-37-46.pkl", "rb" ) )
+    max_len_web = max(len(d['data']) for d in lk_web)
+    padded_web = [np.pad(d['data'], (0, max_len_web - len(d['data'])), mode='constant') for d in lk_web]
+    data_lk_web = np.asarray(padded_web)
     
-    data_lk_web = np.asarray([d['data'] for d in lk_web])
-    data_lk_fibre = np.asarray([d['data'] for d in lk_fibre])
+    lk_fibre = pickle.load( open( "OF_outputs/LK_binary_fib1_2023-11-29_16-37-46.pkl", "rb" ) )
+    max_len_fibre = max(len(d['data']) for d in lk_fibre)
+    padded_fibre = [np.pad(d['data'], (0, max_len_fibre - len(d['data'])), mode='constant') for d in lk_fibre]
+    data_lk_fibre = np.asarray(padded_fibre)
     
     return data_lk_web, data_lk_fibre
 
@@ -79,16 +90,18 @@ def main(whichmodel):
     chosen_loader = switcher.get(choose_data_loader)
     whichdata_web, whichdata_fib = chosen_loader()
 
+    whichdata_fib = whichdata_fib[1:] # cropping to make same size as other matrices.. 
+    
     print('Shape web: ', np.shape(whichdata_web))
     print('Shape fib: ', np.shape(whichdata_fib))
     
     # load ground truth data from franka, csv file 
     # fib_gnd_truth = np.loadtxt('outputs/ground_truth_fibre.csv', delimiter=',')
     fib_gnd_truth_df = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope1-20-Nov-2023--14-06-58.csv', delimiter=',')
-    fib_gnd_truth_df = fib_gnd_truth_df[1:] # remove first data point to match sizes
+    fib_gnd_truth_df = fib_gnd_truth_df.iloc[1:,2:] # remove first data point to match sizes
     # web_gnd_truth = np.loadtxt('outputs/ground_truth_web.csv', delimiter=',')
     web_gnd_truth_df = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam1-20-Nov-2023--15-56-11.csv', delimiter=',')
-    web_gnd_truth_df = web_gnd_truth_df[1:] # remove first data point to match sizes
+    web_gnd_truth_df = web_gnd_truth_df.iloc[1:,2:] # remove first data point to match sizes
     
     print('Shape web ground truth: ', np.shape(web_gnd_truth_df))
     print('Shape fib ground truth: ', np.shape(fib_gnd_truth_df))
@@ -115,7 +128,7 @@ def main(whichmodel):
     pipe_fib = make_pipeline(StandardScaler(), gnb)
 
     # fit model: train ML models for each data set
-    pipe_web.fit(web_X_train, web_y_train) # ERROR HERE with dict file format. 
+    pipe_web.fit(web_X_train, web_y_train) # ERROR HERE y must be 1d... 
     pipe_fib.fit(fib_X_train, fib_y_train) 
 
     # test model: test ML models for each data set
