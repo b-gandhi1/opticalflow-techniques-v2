@@ -11,6 +11,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler, MultiLabelBinarizer
 from sklearn.naive_bayes import GaussianNB, MultinomialNB
 from sklearn.metrics import (accuracy_score, confusion_matrix, ConfusionMatrixDisplay, f1_score, classification_report, roc_curve, RocCurveDisplay, auc)
+from sklearn.multioutput import MultiOutputRegressor
 # use torch instead of sklearn, numpy, and pandas - more efficient. 
 import torch 
 import sys
@@ -77,6 +78,35 @@ def lk_data_loader_binary():
 #     return data_gf_web, data_gf_fibre
 
 # gray, binary 
+
+def plot_pressure(web_pressures, fib_pressures): 
+    web_kpa = web_pressures.iloc[1:,0]
+    web_pump_state = web_pressures.iloc[1:,1]
+    fib_kpa = fib_pressures.iloc[1:,0]
+    fib_pump_state = fib_pressures.iloc[1:,1]
+    
+    plt.figure('Pressure and pump state')
+    time_ax_web = np.linspace(0,60,len(web_kpa))
+    time_ax_fib = np.linspace(0,60,len(fib_kpa))
+    plt.subplot(211)
+    plt.plot(time_ax_web,web_kpa,label = 'webcam')
+    plt.plot(time_ax_fib,fib_kpa,label = 'fibrescope')
+    plt.ylabel('Pressure (kPa)')
+    plt.xlabel('Time (s)')
+    plt.legend()
+    
+    plt.subplot(212)
+    plt.plot(time_ax_web,web_pump_state,label = 'webcam')
+    plt.plot(time_ax_fib,fib_pump_state,label = 'fibrescope')
+    plt.ylabel('Pump state (Raw, ASCII)')
+    plt.xlabel('Time (s)')
+    
+    plt.tight_layout()
+    plt.legend()
+    
+    # plt.savefig('result_figs/controlVarsSample2.svg',format = 'svg')
+    plt.show()
+    
 def main(whichmodel):
     switcher = {
         'bd_bin': bd_data_loader_binary,
@@ -97,22 +127,47 @@ def main(whichmodel):
     
     # load ground truth data from franka, csv file 
     # fib_gnd_truth = np.loadtxt('outputs/ground_truth_fibre.csv', delimiter=',')
-    fib_gnd_truth_df = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope1-20-Nov-2023--14-06-58.csv', delimiter=',')
-    fib_gnd_truth_df = fib_gnd_truth_df.iloc[1:,2:] # remove first data point to match sizes
+    fib_df = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope2-20-Nov-2023--14-09-23.csv', delimiter=',')
+    fib_gnd_truth_df = fib_df.iloc[1:,5:] # remove first data point to match sizes, and extract quaternions
     # web_gnd_truth = np.loadtxt('outputs/ground_truth_web.csv', delimiter=',')
-    web_gnd_truth_df = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam1-20-Nov-2023--15-56-11.csv', delimiter=',')
-    web_gnd_truth_df = web_gnd_truth_df.iloc[1:,2:] # remove first data point to match sizes
+    web_df = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam2-20-Nov-2023--15-59-11.csv', delimiter=',')
+    web_gnd_truth_df = web_df.iloc[1:,5:] # remove first data point to match sizes, and extract quaternions
+    
+    # pressure in pillow (kPa) and pump state - plot this for a control measure. 
+    fib_pressures = fib_df.iloc[1:,3:4+1]
+    web_pressures = web_df.iloc[1:,3:4+1]
+    
+    plot_pressure(web_pressures,fib_pressures) # plots control variables in pillow. 
     
     print('Shape web ground truth: ', np.shape(web_gnd_truth_df))
     print('Shape fib ground truth: ', np.shape(fib_gnd_truth_df))
-    
+
     # frame transformations for franka_ee_pos, with respect to mannequin head origin.  
     x_offset, y_offset, z_offset = 68, 0, 20 # mm, Translation
     # and rotation? ...
 
-    # split data into training, testing and validation sets
-    web_X_train, web_X_test, web_y_train, web_y_test = train_test_split(whichdata_web, web_gnd_truth_df, test_size=0.3,random_state=109) # 70% training and 30% test
-    fib_X_train, fib_X_test, fib_y_train, fib_y_test = train_test_split(whichdata_fib, fib_gnd_truth_df, test_size=0.3,random_state=109) # 70% training and 30% test
+    # # split data into training, testing and validation sets
+    # web_X_train, web_X_test, web_y_train, web_y_test = train_test_split(whichdata_web, web_gnd_truth_df, test_size=0.3,random_state=109) # 70% training and 30% test
+    # fib_X_train, fib_X_test, fib_y_train, fib_y_test = train_test_split(whichdata_fib, fib_gnd_truth_df, test_size=0.3,random_state=109) # 70% training and 30% test
+    # Train-test split for web data
+    web_X_train, web_X_test, web_y_train_df, web_y_test_df = train_test_split(whichdata_web, web_gnd_truth_df, test_size=0.3, random_state=109)
+
+    # Convert DataFrame to NumPy array
+    web_y_train = web_y_train_df.to_numpy()
+    web_y_test = web_y_test_df.to_numpy()
+    
+    # Train-test split for fib data
+    fib_X_train, fib_X_test, fib_y_train_df, fib_y_test_df = train_test_split(whichdata_fib, fib_gnd_truth_df, test_size=0.3, random_state=109)
+
+    # Convert DataFrame to NumPy array
+    fib_y_train = fib_y_train_df.to_numpy()
+    fib_y_test = fib_y_test_df.to_numpy()
+    
+    # Convert y_train and y_test to 2D arrays if needed
+    web_y_train = web_y_train.reshape(-1, 1) if len(web_y_train.shape) == 1 else web_y_train
+    web_y_test = web_y_test.reshape(-1, 1) if len(web_y_test.shape) == 1 else web_y_test
+    fib_y_train = fib_y_train.reshape(-1, 1) if len(fib_y_train.shape) == 1 else fib_y_train
+    fib_y_test = fib_y_test.reshape(-1, 1) if len(fib_y_test.shape) == 1 else fib_y_test
 
     # define model SVM:
     # web_clf_svm = svm.SVC(kernel='rbf', C=1, gamma=0.0, coef0=0.0, shrinking=True, probability=False,tol=0.001, cache_size=200, class_weight=None, verbose=False, max_iter=-1, random_state=None) # RBF Kernel. model 1: SVM webcam
@@ -120,23 +175,25 @@ def main(whichmodel):
     # 0 <= gamma <= 1. Closer to one causes overfitting the data. 
     # C is the regularization parameter of the error term. The higher the value of C, the more regularization is applied. Maimum value is 1, Minimum value is 0. 
 
-    # gnb = GaussianNB() # define ML model1 Gaussian Naive Bayes
-    mnb = MultinomialNB() 
+    gnb = GaussianNB() # define ML model1 Gaussian Naive Bayes
+    # mnb = MultinomialNB() 
     # logReg = LogisticRegression() # define ML model2 Logistic Regression
 
+    web_gnb = MultiOutputRegressor(gnb)
+    fib_gnb = MultiOutputRegressor(gnb)
+    
     # create pipeline to standarsize data, and fit model
-    pipe_web = make_pipeline(StandardScaler(), mnb)
-    pipe_fib = make_pipeline(StandardScaler(), mnb)
+    pipe_web = make_pipeline(StandardScaler(), web_gnb)
+    pipe_fib = make_pipeline(StandardScaler(), fib_gnb)
 
-    # binarize / flatten y values
-    mlb = MultiLabelBinarizer()
-    web_y_train_bin = mlb.fit_transform(web_y_train)
-    fib_y_train_bin = mlb.fit_transform(fib_y_train)
-     #STILL DOES NOT WORK TO MAKE IT 1D!............ *CRY*
+    # # binarize / flatten y values - should not be necessary
+    # mlb = MultiLabelBinarizer()
+    # web_y_train_bin = mlb.fit_transform(web_y_train)
+    # fib_y_train_bin = mlb.fit_transform(fib_y_train)
     
     # fit model: train ML models for each data set
-    pipe_web.fit(web_X_train, web_y_train_bin) # ERROR HERE y must be 1d... 
-    pipe_fib.fit(fib_X_train, fib_y_train_bin) 
+    pipe_web.fit(web_X_train, web_y_train) # ERROR HERE y must be 1d... 
+    pipe_fib.fit(fib_X_train, fib_y_train) 
 
     # test model: test ML models for each data set
     web_y_pred = pipe_web.predict(web_X_test)
