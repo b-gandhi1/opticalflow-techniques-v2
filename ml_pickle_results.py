@@ -7,6 +7,7 @@ import pandas as pd
 # from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split, cross_val_score, cross_validate
 # from sklearn import svm
+from sklearn.linear_model import LinearRegression # for a trial
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler, MultiLabelBinarizer
 from sklearn.naive_bayes import GaussianNB, MultinomialNB
@@ -137,7 +138,7 @@ def main(whichmodel):
     fib_pressures = fib_df.iloc[1:,3:4+1]
     web_pressures = web_df.iloc[1:,3:4+1]
     
-    plot_pressure(web_pressures,fib_pressures) # plots control variables in pillow. 
+    # plot_pressure(web_pressures,fib_pressures) # plots control variables in pillow. 
     
     print('Shape web ground truth: ', np.shape(web_gnd_truth_df))
     print('Shape fib ground truth: ', np.shape(fib_gnd_truth_df))
@@ -162,12 +163,16 @@ def main(whichmodel):
     # Convert DataFrame to NumPy array
     fib_y_train = fib_y_train_df.to_numpy()
     fib_y_test = fib_y_test_df.to_numpy()
-    
-    # Convert y_train and y_test to 2D arrays if needed
+
+    # Convert y_train and y_test to 2D arrays if needed - don't think this is needed... 
     web_y_train = web_y_train.reshape(-1, 1) if len(web_y_train.shape) == 1 else web_y_train
     web_y_test = web_y_test.reshape(-1, 1) if len(web_y_test.shape) == 1 else web_y_test
     fib_y_train = fib_y_train.reshape(-1, 1) if len(fib_y_train.shape) == 1 else fib_y_train
     fib_y_test = fib_y_test.reshape(-1, 1) if len(fib_y_test.shape) == 1 else fib_y_test
+
+    # check variable types: 
+    print("Data types - web_X_train:", web_X_train.dtype, "web_y_train:", web_y_train.dtype)
+    print("Data types - fib_X_train:", fib_X_train.dtype, "fib_y_train:", fib_y_train.dtype)
 
     # define model SVM:
     # web_clf_svm = svm.SVC(kernel='rbf', C=1, gamma=0.0, coef0=0.0, shrinking=True, probability=False,tol=0.001, cache_size=200, class_weight=None, verbose=False, max_iter=-1, random_state=None) # RBF Kernel. model 1: SVM webcam
@@ -178,7 +183,9 @@ def main(whichmodel):
     gnb = GaussianNB() # define ML model1 Gaussian Naive Bayes
     # mnb = MultinomialNB() 
     # logReg = LogisticRegression() # define ML model2 Logistic Regression
-
+    web_LR = LinearRegression()
+    fib_LR = LinearRegression()
+    
     web_gnb = MultiOutputRegressor(gnb)
     fib_gnb = MultiOutputRegressor(gnb)
     
@@ -226,7 +233,7 @@ def main(whichmodel):
     plt.figure('ROC curves')
     fpr_web, tpr_web, _ = roc_curve(web_y_test, web_y_pred)
     # plt.figure('Webcam ROC, AUC = '+ str(auc(fpr_web, tpr_web)))
-    roc_disp_web = RocCurveDisplay(fpr=fpr_web, tpr=tpr_web).plot('Webcam (gray), AUC='+str(auc(fpr_web, tpr_web)))
+    roc_disp_web = RocCurveDisplay(fpr=fpr_web, tpr=tpr_web).plot(label = 'Webcam (gray), AUC='+str(auc(fpr_web, tpr_web)))
     
     fpr_fib, tpr_fib, _ = roc_curve(fib_y_test, fib_y_pred)
     # plt.figure('Fibrescope ROC, AUC = '+ str(auc(fpr_fib, tpr_fib)))
@@ -238,8 +245,8 @@ def main(whichmodel):
     plt.show()
     
     # validation tests for all the models
-    scores_web = cross_val_score(mnb, web_X_test, web_y_test, cv=3)
-    scores_fib = cross_val_score(mnb, fib_X_test, fib_y_test, cv=3)
+    scores_web = cross_val_score(web_gnb, web_X_test, web_y_test, cv=3)
+    scores_fib = cross_val_score(fib_gnb, fib_X_test, fib_y_test, cv=3)
     
     print('Webcam cross-validation accuracy: %0.2f  with standard deviaiton %0.2f' % (scores_web.mean(), scores_web.std())) 
     print('Fibrescope cross-validation accuracy: %0.2f  with standard deviaiton %0.2f' % (scores_fib.mean(), scores_fib.std()))
