@@ -9,7 +9,7 @@ fib_gnd_truth_df1 = fib_df1.iloc[1:,5:] # remove first data point to match sizes
 fib_df2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope2-20-Nov-2023--14-09-23.csv', delimiter=',')
 fib_gnd_truth_df2 = fib_df2.iloc[1:,5:] # remove first data point to match sizes, and extract quaternions
 
-web_df1 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam1-20-Nov-2023--15-55-11.csv', delimiter=',')
+web_df1 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam1-20-Nov-2023--15-56-11.csv', delimiter=',')
 web_gnd_truth_df1 = web_df1.iloc[1:,5:] # remove first data point to match sizes, and extract quaternions
 
 web_df2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam2-20-Nov-2023--15-59-11.csv', delimiter=',')
@@ -43,20 +43,41 @@ def euler_from_quaternion(x, y, z, w):
 # convert data
 def convertdata(data): 
     # data = fib_gnd_truth_df1, fib_gnd_truth_df2, web_gnd_truth_df1, web_gnd_truth_df2 # one of these
+    
+    rotations = pd.DataFrame(columns=['roll_x','pitch_y','yaw_z'])
+    
     for quat in data: 
-        w = quat.iloc[0]
-        x = quat.iloc[1]
-        y = quat.iloc[2]
-        z = quat.iloc[3]
+        
+        if type(quat) == str:
+            continue
+        
+        print(quat)
+        print(type(quat))
+        w = data.iloc(quat)[0]
+        x = data.iloc(quat)[1]
+        y = data.iloc(quat)[2]
+        z = data.iloc(quat)[3]
+        
+        print('quat contents: ',quat)
         roll_x, pitch_y, yaw_z = euler_from_quaternion(x, y, z, w)
         
-        # re-write data - 
+        var = pd.DataFrame({'roll_x':[roll_x],'pitch_y':[pitch_y],'yaw_z':[yaw_z]})
+        rotations = pd.concat([rotations,var],ignore_index=True)
+        print('quat contents: --')
+        print(var)
+        
+        print('data type for rotations: ',type(rotations))
+        return rotations
 
 def main():
-    convertdata(fib_gnd_truth_df1)
-    convertdata(fib_gnd_truth_df2)
-    convertdata(web_gnd_truth_df1)
-    convertdata(web_gnd_truth_df2)
+    fib1euler = convertdata(fib_gnd_truth_df1)
+    fib1euler.to_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fib1euler.csv')    
+    fib2euler = convertdata(fib_gnd_truth_df2)
+    fib2euler.to_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fib2euler.csv')
+    web1euler = convertdata(web_gnd_truth_df1)
+    web1euler.to_csv('data_collection_with_franka/B07LabTrials/final/webcam/web1euler.csv')
+    web2euler = convertdata(web_gnd_truth_df2)
+    web2euler.to_csv('data_collection_with_franka/B07LabTrials/final/webcam/web2euler.csv')
     
 if __name__ == "__main__":
     main()
