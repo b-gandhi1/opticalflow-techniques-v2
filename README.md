@@ -33,6 +33,7 @@ Numpy also needs to be installed.
   2. bd_gray
   3. lk_bin
   4. lk_gray
+* DO NOT RUN THIS. THIS IS NO LONGER BEING USED. 
 
 
 ## Folder structure
@@ -42,14 +43,4 @@ Numpy also needs to be installed.
 * Calibrating paramters tuning: `trial_img_process_calib.py`
 
 ## Current issues (self-notes): 
-* Gunnar farneback uses up a lot of the ram, need to rethink data processing. 
-  * It works with a video that is few seconds long and low resolution. 
-  * Or scrap using this altogether. 
-* ML: 
-  * SVM will no longer be used since it is deterministic. 
-  * Naive Bayes GaussianNB to be used.
-    * this works with 1d y component, mine is 6d... how to make it work???? 
-* Corner detection: 
-  * Works fine on grayscale for webcam, NOT on binary webcam. 
-    * This works now. Changed ref_frame from 0 to 7. 
-  * Done for fibrescope videos: gray, bright, and binary.   
+ 

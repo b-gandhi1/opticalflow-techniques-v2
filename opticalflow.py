@@ -137,7 +137,9 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
         # save data into a csv
         savedata = {
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),  # Get the current timestamp
-        "data": [magnitude,angle] }
+        "data": [magnitude,angle],
+        "x_val": p1[...,0],
+        "y_val": p1[...,1] }
         data_history.append(savedata)
 
         if cv.waitKey(10) & 0xFF == ord('q'):
@@ -233,7 +235,9 @@ def blobdetect(cap,img_process,savefilename):
         # save data in a pickle file
         savedata = {
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),  # Get the current timestamp
-        "data": dist_mag }
+        "data": dist_mag, 
+        "x_val": diff_x, 
+        "y_val": diff_y }
         data_history.append(savedata)            
 
         if cv.waitKey(10) & 0xFF == ord('q'):
