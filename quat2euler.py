@@ -1,31 +1,79 @@
 import numpy as np
 import pandas as pd	
-# import math
+from scipy.spatial.transform import Rotation as R
 
-def euler_from_quaternion(x, y, z, w):
+# def euler_from_quaternion(x, y, z, w):
+#     """
+#     Convert a quaternion into euler angles (roll, pitch, yaw)
+#     roll is rotation around x in radians (counterclockwise)
+#     pitch is rotation around y in radians (counterclockwise)
+#     yaw is rotation around z in radians (counterclockwise)
+#     """
+#     t0 = +2.0 * (w * x + y * z)
+#     t1 = +1.0 - 2.0 * (x * x + y * y)
+#     # roll_x = math.atan2(t0, t1)
+#     roll_x = np.arctan2(t0,t1)
+
+#     t2 = +2.0 * (w * y - z * x)
+#     t2 = +1.0 if t2 > +1.0 else t2
+#     t2 = -1.0 if t2 < -1.0 else t2
+#     # pitch_y = math.asin(t2)
+#     pitch_y = np.arcsin(t2)
+
+#     t3 = +2.0 * (w * z + x * y)
+#     t4 = +1.0 - 2.0 * (y * y + z * z)
+#     # yaw_z = math.atan2(t3, t4)
+#     yaw_z = np.arctan2(t3,t4)
+
+#     return np.rad2deg(roll_x), np.rad2deg(pitch_y), np.rad2deg(yaw_z) # not in radians
+
+def quaternion_rotation_matrix(q0,q1,q2,q3):
     """
-    Convert a quaternion into euler angles (roll, pitch, yaw)
-    roll is rotation around x in radians (counterclockwise)
-    pitch is rotation around y in radians (counterclockwise)
-    yaw is rotation around z in radians (counterclockwise)
+    Covert a quaternion into a full three-dimensional rotation matrix.
+
+    Input
+    :param Q: A 4 element array representing the quaternion (q0,q1,q2,q3) 
+
+    Output
+    :return: A 3x3 element matrix representing the full 3D rotation matrix. 
+            This rotation matrix converts a point in the local reference 
+            frame to a point in the global reference frame.
     """
-    t0 = +2.0 * (w * x + y * z)
-    t1 = +1.0 - 2.0 * (x * x + y * y)
-    # roll_x = math.atan2(t0, t1)
-    roll_x = np.arctan2(t0,t1)
+    # Extract the values from Q
+    # q0 = Q[0]
+    # q1 = Q[1]
+    # q2 = Q[2]
+    # q3 = Q[3]
+    
+    # First row of the rotation matrix
+    r00 = 2 * (q0 * q0 + q1 * q1) - 1
+    r01 = 2 * (q1 * q2 - q0 * q3)
+    r02 = 2 * (q1 * q3 + q0 * q2)
 
-    t2 = +2.0 * (w * y - z * x)
-    t2 = +1.0 if t2 > +1.0 else t2
-    t2 = -1.0 if t2 < -1.0 else t2
-    # pitch_y = math.asin(t2)
-    pitch_y = np.arcsin(t2)
+    # Second row of the rotation matrix
+    r10 = 2 * (q1 * q2 + q0 * q3)
+    r11 = 2 * (q0 * q0 + q2 * q2) - 1
+    r12 = 2 * (q2 * q3 - q0 * q1)
 
-    t3 = +2.0 * (w * z + x * y)
-    t4 = +1.0 - 2.0 * (y * y + z * z)
-    # yaw_z = math.atan2(t3, t4)
-    yaw_z = np.arctan2(t3,t4)
+    # Third row of the rotation matrix
+    r20 = 2 * (q1 * q3 - q0 * q2)
+    r21 = 2 * (q2 * q3 + q0 * q1)
+    r22 = 2 * (q0 * q0 + q3 * q3) - 1
 
-    return roll_x, pitch_y, yaw_z # in radians
+    # 3x3 rotation matrix
+    rot_matrix = np.array([[r00, r01, r02],
+                            [r10, r11, r12],
+                            [r20, r21, r22]])
+                            
+    return rot_matrix
+
+# transformation matrix apply
+def transform_franka_pillow(w,x,y,z):
+    trans_mat = np.array([[-1,0,0],[0,1,0],[0,0,-1]])
+    panda_ee = quaternion_rotation_matrix(w,x,y,z)
+    transformed = np.matmul(panda_ee,trans_mat)
+    trans_euler = R.from_matrix(transformed).as_euler('xyz', degrees=True)
+    return trans_euler[0],trans_euler[1],trans_euler[2]
 
 # convert data
 def convertdata(data): 
@@ -46,7 +94,9 @@ def convertdata(data):
         
         # print('quat contents: ',w,x,y,z)
         # print(type(w),type(x),type(y),type(z))
-        roll_x, pitch_y, yaw_z = euler_from_quaternion(x, y, z, w)
+        # trans_w,trans_x,trans_y,trans_z = transform_franka_pillow(w,x,y,z)
+        # roll_x, pitch_y, yaw_z = euler_from_quaternion(trans_w,trans_x,trans_y,trans_z)
+        roll_x,pitch_y,yaw_z = transform_franka_pillow(w,x,y,z)
         
         var = pd.DataFrame({'roll_x':[roll_x],'pitch_y':[pitch_y],'yaw_z':[yaw_z]})
         rotations = pd.concat([rotations,var],ignore_index=True)

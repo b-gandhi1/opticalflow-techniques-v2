@@ -191,8 +191,6 @@ def OF_GF(cap,ref_frame,img_process,savefilename,mask): # Gunnar-Farneback, dens
     with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
         pickle.dump(data_history, file)
     
-def OF_HS(cap,ref_frame,img_process,savefilename): # Horn-Schunk, global solution, smoother, brightness constancy. 
-    pass
 def blobdetect(cap,img_process,savefilename):
 
     params = cv.SimpleBlobDetector_Params() # create blob detector

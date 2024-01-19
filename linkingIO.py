@@ -65,7 +65,15 @@ def linkingIO_BD(gnd_truth_euler, fib_web_dat):
 
 def linkingIO_OF(gnd_truth_euler, fib_web_dat):
     # get max displacements from fib_web_dat
+    mag = fib_web_dat['data'][...,0]
+    ang = fib_web_dat['data'][...,1]
+    timestamps_OF = fib_web_dat['timestamp']
+    print('Shape magnituge OF: ',np.shape(mag))
+    print('Shape angle OF: ',np.shape(ang))
     
+    euler_x = gnd_truth_euler[:,0]
+    euler_y = gnd_truth_euler[:,1]
+    euler_z = gnd_truth_euler[:,2]
     
     # plot against gnd_truth_euler
     
