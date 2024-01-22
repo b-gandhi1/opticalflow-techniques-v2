@@ -64,6 +64,10 @@ def webcam_process(frame):
     dilated = cv.dilate(morph_close,kernel)
 
     return dilated 
+
+def z_brightness(frame): # use this to get average brightness of each frame
+    bright_avg = np.average(frame)
+    
 def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optical flow, local solution
     
     data_history = []
@@ -137,7 +141,8 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
         # save data into a csv
         savedata = {
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),  # Get the current timestamp
-        "data": [magnitude,angle],
+        "magnitude": magnitude,
+        "angle": angle,
         "x_val": p1[...,0],
         "y_val": p1[...,1] }
         data_history.append(savedata)
