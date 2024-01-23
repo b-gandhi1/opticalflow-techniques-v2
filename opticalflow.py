@@ -66,7 +66,9 @@ def webcam_process(frame):
     return dilated 
 
 def z_brightness(frame): # use this to get average brightness of each frame
-    bright_avg = np.average(frame)
+    norm_frame = frame/np.max(frame)
+    bright_avg = np.average(norm_frame)
+    return bright_avg
     
 def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optical flow, local solution
     
@@ -114,7 +116,9 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
     mask_OF = np.zeros_like(ref_frame)
 
     p1,st,err = None,None,None
-        
+    
+    z_val = None
+    
     while True:
         ret, frame = cap.read()
         if not ret: break 
@@ -124,7 +128,7 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
         
         # p1,st,err = cv.calcOpticalFlowPyrLK(ref_frame, frame_filt, p0, None, None, None,**lk_params)
         p1,st,err = cv.calcOpticalFlowPyrLK(ref_frame, frame_filt, p0, p1, st, err,**lk_params)
-
+        z_val = z_brightness(frame_filt)
         magnitude, angle = cv.cartToPolar(p1[..., 0], p1[..., 1])
         if p1 is not None:
             good_new = p1[st==1]
@@ -144,7 +148,9 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
         "magnitude": magnitude,
         "angle": angle,
         "x_val": p1[...,0],
-        "y_val": p1[...,1] }
+        "y_val": p1[...,1],
+        "z_val": z_val
+        }
         data_history.append(savedata)
 
         if cv.waitKey(10) & 0xFF == ord('q'):
@@ -158,43 +164,43 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
     with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
         pickle.dump(data_history, file)
 
-def OF_GF(cap,ref_frame,img_process,savefilename,mask): # Gunnar-Farneback, dense optical flow
+# def OF_GF(cap,ref_frame,img_process,savefilename,mask): # Gunnar-Farneback, dense optical flow
     # keeps getting killed... not sure why. 
-    mask[...,1] = 255 # saturation
+    # mask[...,1] = 255 # saturation
 
-    data_history = []
+    # data_history = []
     
-    while True:
-        ret, frame = cap.read()
-        if not ret: break
+    # while True:
+    #     ret, frame = cap.read()
+    #     if not ret: break
         
-        frame_filt = img_process(frame) # was: (cap,frame)
-        flow = cv.calcOpticalFlowFarneback(ref_frame,frame_filt,None,pyr_scale=0.5,levels=2,winsize=3,iterations=2,poly_n=5,poly_sigma=1.1,flags=0) # what do these parameters mean?? 
-        # explain - https://docs.opencv.org/3.0-beta/modules/video/doc/motion_analysis_and_object_tracking.html 
-        mag, ang = cv.cartToPolar(flow[..., 0], flow[..., 1])
-        # mask[..., 0] = ang*180/np.pi/2
-        mask[...,0] = np.rad2deg(ang) # ERROR HERE
-        mask[...,2] = cv.normalize(mag, None, 0, 255, cv.NORM_MINMAX)
+    #     frame_filt = img_process(frame) # was: (cap,frame)
+    #     flow = cv.calcOpticalFlowFarneback(ref_frame,frame_filt,None,pyr_scale=0.5,levels=2,winsize=3,iterations=2,poly_n=5,poly_sigma=1.1,flags=0) # what do these parameters mean?? 
+    #     # explain - https://docs.opencv.org/3.0-beta/modules/video/doc/motion_analysis_and_object_tracking.html 
+    #     mag, ang = cv.cartToPolar(flow[..., 0], flow[..., 1])
+    #     # mask[..., 0] = ang*180/np.pi/2
+    #     mask[...,0] = np.rad2deg(ang) # ERROR HERE
+    #     mask[...,2] = cv.normalize(mag, None, 0, 255, cv.NORM_MINMAX)
 
-        # Converts HSV to RGB (BGR) color representation
-        rgb = cv.cvtColor(mask, cv.COLOR_HSV2BGR)
+    #     # Converts HSV to RGB (BGR) color representation
+    #     rgb = cv.cvtColor(mask, cv.COLOR_HSV2BGR)
 
-        # Opens a new window and displays the output frame
-        cv.imshow('Optical Flow - Gunnar Farneback', rgb)
+    #     # Opens a new window and displays the output frame
+    #     cv.imshow('Optical Flow - Gunnar Farneback', rgb)
 
-        # save data into a csv
-        savedata = {
-        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),  # Get the current timestamp
-        "data": [mag,ang] }
-        data_history.append(savedata)
+    #     # save data into a csv
+    #     savedata = {
+    #     "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),  # Get the current timestamp
+    #     "data": [mag,ang] }
+    #     data_history.append(savedata)
 
-        if cv.waitKey(10) & 0xFF == ord('q'):
-            print('Quitting...')
-            break
-        # ref_frame = frame_filt # use this for continuous differential measurement of OF
+    #     if cv.waitKey(10) & 0xFF == ord('q'):
+    #         print('Quitting...')
+    #         break
+    #     # ref_frame = frame_filt # use this for continuous differential measurement of OF
 
-    with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
-        pickle.dump(data_history, file)
+    # with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
+    #     pickle.dump(data_history, file)
     
 def blobdetect(cap,img_process,savefilename):
 
@@ -217,7 +223,7 @@ def blobdetect(cap,img_process,savefilename):
     detector = cv.SimpleBlobDetector_create(params) # create blob detector
 
     data_history = []
-
+    z_val = None
     while True:
         ret, frame = cap.read()
         if not ret: break
@@ -230,17 +236,22 @@ def blobdetect(cap,img_process,savefilename):
         # simple euclidean dist, max
         diff_x = np.diff(centroids[:,0])
         diff_y = np.diff(centroids[:,1])
-        dist_mag = np.sum([diff_x**2+diff_y**2],axis=0)
-
+        # dist_mag = np.sum([diff_x**2+diff_y**2],axis=0)
+        magnitude, angle = cv.cartToPolar(diff_x, diff_y)
+        z_val = z_brightness(frame)
+        
         BD_img = cv.drawKeypoints(frame,keypoints,np.array([]),(0,0,255),cv.DRAW_MATCHES_FLAGS_DEFAULT)
         cv.imshow('OpenCV: Blob Detection',BD_img)
 
         # save data in a pickle file
         savedata = {
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),  # Get the current timestamp
-        "data": dist_mag, 
+        "magnitude": magnitude, 
+        "angle": angle,
         "x_val": diff_x, 
-        "y_val": diff_y }
+        "y_val": diff_y,
+        "z_val": z_val 
+        }
         data_history.append(savedata)            
 
         if cv.waitKey(10) & 0xFF == ord('q'):
@@ -285,9 +296,9 @@ def main(img_process_selector,loadpath):
     ref_frame = img_process(ref_frame) # was: (cap,ref_frame)
     cv.imshow('reference frame after filtering',ref_frame)
     # filenames to save output data: 
-    savefilename_LK = os.path.join('OF_outputs','LK_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    savefilename_LK = os.path.join('OF_outputs','LK_gray_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
     # savefilename_GF = os.path.join('OF_outputs','GF_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
-    savefilename_BD = os.path.join('OF_outputs','BD_gray_fib_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    savefilename_BD = os.path.join('OF_outputs','BD_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
 
     # # multiprocess the 4 methods together
     # OF_LK_process = mp.Process(target=OF_LK, args=(cap,ref_frame,img_process,savefilename_LK))

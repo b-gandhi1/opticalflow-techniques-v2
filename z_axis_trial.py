@@ -25,7 +25,9 @@ def webcam_process(frame):
     return dilated 
 
 def z_brightness(frame):
-    bright_avg = np.average(frame)
+    
+    norm_frame = frame/np.max(frame)
+    bright_avg = np.mean(norm_frame)
     return bright_avg
 
 def main(path):
@@ -45,7 +47,7 @@ def main(path):
         z_bright = z_brightness(frame)
         print(z_bright)
         cv.imshow('frame',frame)
-        if z_bright > 1.0:
+        if z_bright > 0.006:
             plt.plot(t,z_bright,'r.')
         if cv.waitKey(10) & 0xFF == ord('q'):
             print('Quitting...')
