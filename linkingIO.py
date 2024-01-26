@@ -10,10 +10,10 @@ import matplotlib.pyplot as plt
 # load pickle data from outputs folder 
 
 def data_load_adapt(data_var):
-    # max_len = max(len(d['data']) for d in data_var)
-    # padded = [np.pad(d['data'], (0, max_len - len(d['data'])), mode='constant') for d in data_var]
-    # data_out = np.asarray(padded)
-    data_out = data_var
+    max_len = max(len(d) for d in data_var)
+    padded = [np.pad(d, (0, max_len - len(d)), mode='constant') for d in data_var]
+    data_out = np.asarray(padded)
+    # data_out = data_var
     return data_out
 
 # pressure plot - control vars. 
@@ -49,37 +49,36 @@ def linkingIO(gnd_truth_euler, fib_web_dat):
     # get max displacements from fib_web_dat
     # mag = fib_web_dat['magnitude']
     # ang = fib_web_dat['angle']
-    x_val = np.max(np.asarray([data['x_val'] for data in fib_web_dat],dtype=float),axis=1) # np.max converts from 2D to 1D array. 
-    y_val = np.max(np.asarray([data['y_val'] for data in fib_web_dat],dtype=float),axis=1)
+
+    x_val = np.max(data_load_adapt([data['x_val'] for data in fib_web_dat]),axis=1)
+    # print("x_val shape: -----", np.shape(x_val))
+    y_val = np.max(data_load_adapt([data['y_val'] for data in fib_web_dat]),axis=1)
     z_val = np.asarray([data['z_val'] for data in fib_web_dat],dtype=float) # already 1D
     timestamps = [data['timestamp'] for data in fib_web_dat] # already 1D
     # print('Shape displacements BD: ',np.shape(mag))
-    print('XYZ shapes: ', np.shape(x_val),np.shape(y_val),np.shape(z_val))
+    # print('XYZ shapes: ', np.shape(x_val),np.shape(y_val),np.shape(z_val))
     
-    euler_x = gnd_truth_euler[:,0]
-    euler_y = gnd_truth_euler[:,1]
-    euler_z = gnd_truth_euler[:,2]
+    euler_x = gnd_truth_euler.iloc[1:,0]
+    euler_y = gnd_truth_euler.iloc[1:,1]
+    euler_z = gnd_truth_euler.iloc[1:,2]
         
     # plot against gnd_truth_euler
-    plt.figure()
     plt.subplot(311)
-    plt.plot(euler_x,x_val,legend = 'x')
+    plt.scatter(euler_x,x_val)
     plt.xlabel('Ground truth - Rot(x)')
     plt.ylabel('X Value (from frame)')
     
     plt.subplot(312)
-    plt.plot(euler_y,y_val,legend = 'y')
+    plt.scatter(euler_y,y_val)
     plt.xlabel('Ground truth - Rot(y)')
     plt.ylabel('Y Value (from frame)')
     
     plt.subplot(313)
-    plt.plot(euler_z,z_val,legend = 'z')
+    plt.scatter(euler_z,z_val)
     plt.xlabel('Ground truth - Rot(z)')
     plt.ylabel('Z Value (from frame)')
     
-    plt.tight_layout()
-    plt.show()
-    
+    plt.tight_layout()    
 
 # def linkingIO_OF(gnd_truth_euler, fib_web_dat):
 #     # get max displacements from fib_web_dat
@@ -152,53 +151,71 @@ def main():
     fib_lk_bin2_raw = pickle.load(open("OF_outputs/data2_jan2023/LK_binary_fib2_2024-01-23_13-11-41.pkl", "rb"))
     
     # adapting datasets for useability:
-    web_bd_gray1, fib_bd_gray1, web_bd_gray2, fib_bd_gray2 = data_load_adapt(web_bd_gray1_raw), data_load_adapt(fib_bd_gray1_raw), data_load_adapt(web_bd_gray2_raw), data_load_adapt(fib_bd_gray2_raw)
-    web_bd_bin1, fib_bd_bin1, web_bd_bin2, fib_bd_bin2 = data_load_adapt(web_bd_bin1_raw), data_load_adapt(fib_bd_bin1_raw), data_load_adapt(web_bd_bin2_raw), data_load_adapt(fib_bd_bin2_raw)
-    web_lk_gray1, fib_lk_gray1, web_lk_gray2, fib_lk_gray2 = data_load_adapt(web_lk_gray1_raw), data_load_adapt(fib_lk_gray1_raw), data_load_adapt(web_lk_gray2_raw), data_load_adapt(fib_lk_gray2_raw)
-    web_lk_bin1, fib_lk_bin1, web_lk_bin2, fib_lk_bin2 = data_load_adapt(web_lk_bin1_raw), data_load_adapt(fib_lk_bin1_raw), data_load_adapt(web_lk_bin2_raw), data_load_adapt(fib_lk_bin2_raw)
+    # web_bd_gray1, fib_bd_gray1, web_bd_gray2, fib_bd_gray2 = data_load_adapt(web_bd_gray1_raw), data_load_adapt(fib_bd_gray1_raw), data_load_adapt(web_bd_gray2_raw), data_load_adapt(fib_bd_gray2_raw)
+    # web_bd_bin1, fib_bd_bin1, web_bd_bin2, fib_bd_bin2 = data_load_adapt(web_bd_bin1_raw), data_load_adapt(fib_bd_bin1_raw), data_load_adapt(web_bd_bin2_raw), data_load_adapt(fib_bd_bin2_raw)
+    # web_lk_gray1, fib_lk_gray1, web_lk_gray2, fib_lk_gray2 = data_load_adapt(web_lk_gray1_raw), data_load_adapt(fib_lk_gray1_raw), data_load_adapt(web_lk_gray2_raw), data_load_adapt(fib_lk_gray2_raw)
+    # web_lk_bin1, fib_lk_bin1, web_lk_bin2, fib_lk_bin2 = data_load_adapt(web_lk_bin1_raw), data_load_adapt(fib_lk_bin1_raw), data_load_adapt(web_lk_bin2_raw), data_load_adapt(fib_lk_bin2_raw)
     
     # outputs for linking IO plots: 
+    # plt.ion()
     # webcam: 
-    linkingIO(web_df_euler1,web_bd_gray1) # for BD_gray
-    plt.title('Sample 1: Grayscale Webcam + Blob Detection')
-    linkingIO(web_df_euler2,web_bd_gray2)
-    plt.title('Sample 2: Grayscale Webcam + Blob Detection')
+    plt.figure(1)
+    linkingIO(web_df_euler1,web_bd_gray1_raw) # for BD_gray
+    plt.suptitle('Sample 1: Grayscale Webcam + Blob Detection')
+    plt.figure(2)
+    linkingIO(web_df_euler2,web_bd_gray2_raw)
+    plt.suptitle('Sample 2: Grayscale Webcam + Blob Detection')
     
-    linkingIO(web_df_euler1,web_bd_bin1) # for BD_binary
-    plt.title('Sample 1: Binary Webcam + Blob Detection')
-    linkingIO(web_df_euler2,web_bd_bin2)
-    plt.title('Sample 2: Binary Webcam + Blob Detection')
+    plt.figure(3)
+    linkingIO(web_df_euler1,web_bd_bin1_raw) # for BD_binary
+    plt.suptitle('Sample 1: Binary Webcam + Blob Detection')
+    plt.figure(4)
+    linkingIO(web_df_euler2,web_bd_bin2_raw)
+    plt.suptitle('Sample 2: Binary Webcam + Blob Detection')
     
-    linkingIO(web_df_euler1,web_lk_gray1) # for LK_gray
-    plt.title('Sample 1: Grayscale Webcam + Optical Flow')
-    linkingIO(web_df_euler2,web_lk_gray2)
-    plt.title('Sample 2: Grayscale Webcam + Optical Flow')
+    plt.figure(5)
+    linkingIO(web_df_euler1,web_lk_gray1_raw) # for LK_gray
+    plt.suptitle('Sample 1: Grayscale Webcam + Optical Flow')
+    plt.figure(6)
+    linkingIO(web_df_euler2,web_lk_gray2_raw)
+    plt.suptitle('Sample 2: Grayscale Webcam + Optical Flow')
     
-    linkingIO(web_df_euler1,web_lk_bin1) # for LK_binary
-    plt.title('Sample 1: Binary Webcam + Optical Flow')
-    linkingIO(web_df_euler2,web_lk_bin2)
-    plt.title('Sample 2: Binary Webcam + Optical Flow')
+    plt.figure(7)
+    linkingIO(web_df_euler1,web_lk_bin1_raw) # for LK_binary
+    plt.suptitle('Sample 1: Binary Webcam + Optical Flow')
+    plt.figure(8)
+    linkingIO(web_df_euler2,web_lk_bin2_raw)
+    plt.suptitle('Sample 2: Binary Webcam + Optical Flow')
     
-    # fibrescope: 
-    linkingIO(fib_df_euler1,fib_bd_gray1) # for BD_gray
-    plt.title('Sample 1: Grayscale Fibrescope + Blob Detection')
-    linkingIO(fib_df_euler2,fib_bd_gray2)
-    plt.title('Sample 2: Grayscale Fibrescope + Blob Detection')
+    # fibrescope:
+    plt.figure(9) 
+    linkingIO(fib_df_euler1,fib_bd_gray1_raw) # for BD_gray
+    plt.suptitle('Sample 1: Grayscale Fibrescope + Blob Detection')
+    plt.figure(10)
+    linkingIO(fib_df_euler2,fib_bd_gray2_raw)
+    plt.suptitle('Sample 2: Grayscale Fibrescope + Blob Detection')
     
-    linkingIO(fib_df_euler1,fib_bd_bin1) # for BD_binary
-    plt.title('Sample 1: Binary Fibrescope + Blob Detection')
-    linkingIO(fib_df_euler2,fib_bd_bin2)
-    plt.title('Sample 2: Binary Fibrescope + Blob Detection')
+    plt.figure(11)
+    linkingIO(fib_df_euler1,fib_bd_bin1_raw) # for BD_binary
+    plt.suptitle('Sample 1: Binary Fibrescope + Blob Detection')
+    plt.figure(12)
+    linkingIO(fib_df_euler2,fib_bd_bin2_raw)
+    plt.suptitle('Sample 2: Binary Fibrescope + Blob Detection')
     
-    linkingIO(fib_df_euler1,fib_lk_gray1) # for LK_gray
-    plt.title('Sample 1: Grayscale Fibrescope + Optical Flow')
-    linkingIO(fib_df_euler2,fib_lk_gray2)
-    plt.title('Sample 2: Grayscale Fibrescope + Optical Flow')
+    plt.figure(13)
+    linkingIO(fib_df_euler1,fib_lk_gray1_raw) # for LK_gray
+    plt.suptitle('Sample 1: Grayscale Fibrescope + Optical Flow')
+    plt.figure(14)
+    linkingIO(fib_df_euler2,fib_lk_gray2_raw)
+    plt.suptitle('Sample 2: Grayscale Fibrescope + Optical Flow')
     
-    linkingIO(fib_df_euler1,fib_lk_bin1) # for LK_binary
-    plt.title('Sample 1: Binary Fibrescope + Optical Flow')
-    linkingIO(fib_df_euler2,fib_lk_bin2)
-    plt.title('Sample 2: Binary Fibrescope + Optical Flow')
+    plt.figure(15)
+    linkingIO(fib_df_euler1,fib_lk_bin1_raw) # for LK_binary
+    plt.suptitle('Sample 1: Binary Fibrescope + Optical Flow')
+    plt.figure(16)
+    linkingIO(fib_df_euler2,fib_lk_bin2_raw)
+    plt.suptitle('Sample 2: Binary Fibrescope + Optical Flow')
     
+    plt.show()
 if __name__ == "__main__":
     main()
