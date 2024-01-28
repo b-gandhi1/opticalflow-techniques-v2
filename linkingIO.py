@@ -49,9 +49,11 @@ def linkingIO(gnd_truth_euler, fib_web_dat):
     # get max displacements from fib_web_dat
     # mag = fib_web_dat['magnitude']
     # ang = fib_web_dat['angle']
-
+    test = [data['x_val'] for data in fib_web_dat]
+    print('shape of 3d x_val : ',len(test[0]),len(test[1]),len(test[2]))
     x_val = np.max(data_load_adapt([data['x_val'] for data in fib_web_dat]),axis=1)
-    # print("x_val shape: -----", np.shape(x_val))
+    print("x_val 1d shape: -----", np.shape(x_val))
+    print(x_val)
     y_val = np.max(data_load_adapt([data['y_val'] for data in fib_web_dat]),axis=1)
     z_val = np.asarray([data['z_val'] for data in fib_web_dat],dtype=float) # already 1D
     timestamps = [data['timestamp'] for data in fib_web_dat] # already 1D
@@ -67,6 +69,7 @@ def linkingIO(gnd_truth_euler, fib_web_dat):
     plt.scatter(euler_x,x_val)
     plt.xlabel('Ground truth - Rot(x)')
     plt.ylabel('X Value (from frame)')
+    plt.ylim([600,650])
     
     plt.subplot(312)
     plt.scatter(euler_y,y_val)

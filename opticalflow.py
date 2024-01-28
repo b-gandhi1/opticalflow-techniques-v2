@@ -148,11 +148,18 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
         "magnitude": magnitude,
         "angle": angle,
         "x_val": p1[...,0],
+        "x_val_1d": np.max(p1[...,0]),
         "y_val": p1[...,1],
+        "y_val_1d": np.max(p1[...,1]),
         "z_val": z_val
         }
         data_history.append(savedata)
-
+        
+        # tests: 
+        # x_val, y_val = np.asarray(p1[...,0]), np.asarray(p1[...,1])
+        # print('x_val size: ', np.shape(x_val), ' y_val size: ', np.shape(y_val))
+        # print('x_mean: ', np.mean(x_val), ' y_mean: ', np.mean(y_val))
+        
         if cv.waitKey(10) & 0xFF == ord('q'):
             print('Quitting...')
             break
@@ -296,7 +303,7 @@ def main(img_process_selector,loadpath):
     ref_frame = img_process(ref_frame) # was: (cap,ref_frame)
     cv.imshow('reference frame after filtering',ref_frame)
     # filenames to save output data: 
-    savefilename_LK = os.path.join('OF_outputs','LK_gray_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    savefilename_LK = os.path.join('OF_outputs','LK_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
     # savefilename_GF = os.path.join('OF_outputs','GF_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
     savefilename_BD = os.path.join('OF_outputs','BD_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
 
@@ -321,9 +328,9 @@ def main(img_process_selector,loadpath):
         # print('All processes have finished.')
         
         # not using multi-processing: 
-        # OF_LK(cap,ref_frame,img_process,savefilename_LK)
+        OF_LK(cap,ref_frame,img_process,savefilename_LK)
         # OF_GF(cap,ref_frame,img_process,savefilename_GF,mask_GF) # keeps gettig killed, due to RAM and CPU being saturated.
-        blobdetect(cap,img_process,savefilename_BD)
+        # blobdetect(cap,img_process,savefilename_BD)
 
     except KeyboardInterrupt:
         print('*****ERROR: Manually interrupted*****')
