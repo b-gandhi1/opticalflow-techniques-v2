@@ -43,7 +43,7 @@ def oneD_plots(timeseries):
     plt.figure()
     plt.plot(range(len(timeseries)),timeseries)
     plt.tight_layout()
-    plt.show()
+    # plt.show()
 
 def main():
     data = load_data()
@@ -55,8 +55,8 @@ def main():
     # print('shape of x_1d_padded: ', np.shape(x_mat_padded))
     # x_1d = np.median(x_mat_padded,axis=1)
     # print('shape of x_1d: ', np.shape(x_1d))
-    oneD_plots(x_mat)
+    # oneD_plots(x_mat)
     
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
     

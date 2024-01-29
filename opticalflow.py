@@ -7,6 +7,8 @@ import time
 import os
 import glob
 import sys
+import timeseries_test as tst
+import matplotlib.pyplot as plt
 
 # from pyOpticalFlow import getimgsfiles # from: pip install pyoptflow
 
@@ -90,12 +92,12 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
     elif img_process == fibrescope_process:
         print('LK: Fibrescope')
         feature_params = dict( maxCorners = 100, 
-                                qualityLevel = 0.01, # between 0 and 1. Lower numbers = higher quality level. 
+                                qualityLevel = 0.9, # between 0 and 1. Lower numbers = higher quality level. 
                                 minDistance = 5.0, # distance in pixels between points being monitored. 
                                 blockSize = 3,
                                 useHarrisDetector = False, # Shi-Tomasi better for corner detection than Harris for fibrescope. 
                                 k = 0.04 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense.
-        lk_params = dict( winSize  = (45, 45),
+        lk_params = dict( winSize = (45, 45),
                     maxLevel = 2,
                     criteria = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
     
@@ -109,14 +111,14 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
     #                 criteria = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
     
     color = np.random.randint(0, 255, (500, 3)) # Create some random colors 
-        
+    
     p0 = cv.goodFeaturesToTrack(ref_frame, mask = None, **feature_params) # Shi-Tomasi corner detection
     # p0 = cv.cornerHarris(ref_frame, 10,10,0.3) # Harris corner detection, ERROR. figure out how to use this!! 
     # cv.imshow('ref frame temp',ref_frame)
     mask_OF = np.zeros_like(ref_frame)
 
     p1,st,err = None,None,None
-    
+    x_val_store, y_val_store = [], []
     while True:
         ret, frame = cap.read()
         if not ret: break 
@@ -146,9 +148,9 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
         "magnitude": magnitude,
         "angle": angle,
         "x_val": p1[...,0],
-        "x_val_1d": np.max(p1[...,0]),
+        "x_val_1d": np.mean(p1[...,0]),
         "y_val": p1[...,1],
-        "y_val_1d": np.max(p1[...,1]),
+        "y_val_1d": np.mean(p1[...,1]),
         "z_val": z_val
         }
         data_history.append(savedata)
@@ -157,6 +159,10 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
         # x_val, y_val = np.asarray(p1[...,0]), np.asarray(p1[...,1])
         # print('x_val size: ', np.shape(x_val), ' y_val size: ', np.shape(y_val))
         # print('x_mean: ', np.mean(x_val), ' y_mean: ', np.mean(y_val))
+        # x_val_store.append(np.mean(x_val))
+        # y_val_store.append(np.mean(y_val))
+        
+        # Tests conclusion = TIME TO BE MEAN!! 
         
         if cv.waitKey(10) & 0xFF == ord('q'):
             print('Quitting...')
@@ -165,7 +171,14 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
         # Use this for continuous differential measurement of OF: ---    
         # ref_frame = frame_filt.copy()
         # p0 = good_new.reshape(-1, 1, 2)
-
+    
+    # test plots
+    tst.oneD_plots(x_val_store)
+    plt.title('x_val')
+    tst.oneD_plots(y_val_store)
+    plt.title('y_val')
+    plt.show()
+    
     with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
         pickle.dump(data_history, file)
 
@@ -228,6 +241,7 @@ def blobdetect(cap,img_process,savefilename):
     detector = cv.SimpleBlobDetector_create(params) # create blob detector
 
     data_history = []
+    x_val_store, y_val_store = [], []
     while True:
         ret, frame = cap.read()
         if not ret: break
@@ -253,9 +267,9 @@ def blobdetect(cap,img_process,savefilename):
         "magnitude": magnitude, 
         "angle": angle,
         "x_val": diff_x, 
-        "x_val_1d": np.median(diff_x),
+        "x_val_1d": np.max(diff_x),
         "y_val": diff_y,
-        "y_val_1d": np.median(diff_y),
+        "y_val_1d": np.max(diff_y),
         "z_val": z_val 
         }
         data_history.append(savedata)
@@ -263,10 +277,20 @@ def blobdetect(cap,img_process,savefilename):
         # tests: 
         x_val, y_val = np.max(diff_x), np.max(diff_y)
         print('x_val: ', x_val, 'y_val: ', y_val, 'z_val: ', z_val)
+        x_val_store.append(x_val)
+        y_val_store.append(y_val)
+        
         if cv.waitKey(10) & 0xFF == ord('q'):
             print('Quitting...')
             break
-
+    
+    # Tests plots: 
+    tst.oneD_plots(x_val_store)
+    plt.title('x_val')
+    tst.oneD_plots(y_val_store)
+    plt.title('y_val')
+    plt.show()
+    
     with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
         pickle.dump(data_history, file)
 
@@ -282,7 +306,7 @@ def main(img_process_selector,loadpath):
     
     # take reference frame 
     if img_process_selector == 'w':
-        cap.set(cv.CAP_PROP_POS_FRAMES, 7) # since first ref frame is messy for some reason.. does not cover all pins in binary verison. 
+        cap.set(cv.CAP_PROP_POS_FRAMES, 3) # since first ref frame is messy for some reason.. does not cover all pins in binary verison. 
     ret, ref_frame = cap.read()
     if not ret: print('ERROR: Cannot get frame.')
     cap.set(cv.CAP_PROP_POS_FRAMES, 0) # reset back. 
@@ -330,9 +354,9 @@ def main(img_process_selector,loadpath):
         # print('All processes have finished.')
         
         # not using multi-processing: 
-        OF_LK(cap,ref_frame,img_process,savefilename_LK)
+        # OF_LK(cap,ref_frame,img_process,savefilename_LK)
         # OF_GF(cap,ref_frame,img_process,savefilename_GF,mask_GF) # keeps gettig killed, due to RAM and CPU being saturated.
-        # blobdetect(cap,img_process,savefilename_BD)
+        blobdetect(cap,img_process,savefilename_BD)
 
     except KeyboardInterrupt:
         print('*****ERROR: Manually interrupted*****')
