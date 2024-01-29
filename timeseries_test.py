@@ -27,8 +27,10 @@ def load_data():
     fib_lk_bin2_raw = pickle.load(open("OF_outputs/data2_jan2023/LK_binary_fib2_2024-01-23_13-11-41.pkl", "rb"))
     
     # trials: 
-    data = pickle.load(open("OF_outputs/LK_binary_web1_2024-01-28_15-57-48.pkl","rb"))
-    return data
+    data1 = pickle.load(open("OF_outputs/LK_binary_web_2024-01-28_21-47-54.pkl","rb"))
+    data2 = pickle.load(open("OF_outputs/BD_binary_web_2024-01-28_21-24-08.pkl","rb"))
+    
+    return data1
 
 def data_load_adapt(data_var):
     max_len = max(len(d) for d in data_var)

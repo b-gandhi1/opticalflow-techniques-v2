@@ -55,7 +55,7 @@ def webcam_process(frame):
     kernel = np.ones((4,4),np.uint8)
     gray = cv.cvtColor(frame,cv.COLOR_RGB2GRAY)
     mask_blank = np.zeros_like(gray,dtype='uint8') # ,dtype='uint8'
-    x,y,w,h = 0,60,640,340 # (x,y) = top left params
+    x,y,w,h = 0,60,629,340 # (x,y) = top left params
     rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
     masked = cv.bitwise_and(gray,gray,mask=rect)
     binary = cv.threshold(masked,125,255,cv.THRESH_BINARY)[1] 
@@ -116,8 +116,6 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
     mask_OF = np.zeros_like(ref_frame)
 
     p1,st,err = None,None,None
-    
-    z_val = None
     
     while True:
         ret, frame = cap.read()
@@ -230,7 +228,6 @@ def blobdetect(cap,img_process,savefilename):
     detector = cv.SimpleBlobDetector_create(params) # create blob detector
 
     data_history = []
-    z_val = None
     while True:
         ret, frame = cap.read()
         if not ret: break
@@ -256,11 +253,16 @@ def blobdetect(cap,img_process,savefilename):
         "magnitude": magnitude, 
         "angle": angle,
         "x_val": diff_x, 
+        "x_val_1d": np.median(diff_x),
         "y_val": diff_y,
+        "y_val_1d": np.median(diff_y),
         "z_val": z_val 
         }
-        data_history.append(savedata)            
-
+        data_history.append(savedata)
+        
+        # tests: 
+        x_val, y_val = np.max(diff_x), np.max(diff_y)
+        print('x_val: ', x_val, 'y_val: ', y_val, 'z_val: ', z_val)
         if cv.waitKey(10) & 0xFF == ord('q'):
             print('Quitting...')
             break
