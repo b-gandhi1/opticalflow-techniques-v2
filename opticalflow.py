@@ -37,7 +37,7 @@ def fibrescope_process(frame):
     morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
     dilated = cv.dilate(morph_close,kernel)
 
-    return brightened
+    return dilated
 
 # def fish_undistort(ref_frame,checkboard):
 #     # checkboard = imread()
@@ -65,7 +65,7 @@ def webcam_process(frame):
     morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
     dilated = cv.dilate(morph_close,kernel)
 
-    return dilated 
+    return masked 
 
 def z_brightness(frame): # use this to get average brightness of each frame
     norm_frame = frame/np.max(frame)
@@ -92,7 +92,7 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
     elif img_process == fibrescope_process:
         print('LK: Fibrescope')
         feature_params = dict( maxCorners = 100, 
-                                qualityLevel = 0.9, # between 0 and 1. Lower numbers = higher quality level. 
+                                qualityLevel = 0.01, # between 0 and 1. Lower numbers = higher quality level. 
                                 minDistance = 5.0, # distance in pixels between points being monitored. 
                                 blockSize = 3,
                                 useHarrisDetector = False, # Shi-Tomasi better for corner detection than Harris for fibrescope. 
@@ -173,11 +173,11 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
         # p0 = good_new.reshape(-1, 1, 2)
     
     # test plots
-    tst.oneD_plots(x_val_store)
-    plt.title('x_val')
-    tst.oneD_plots(y_val_store)
-    plt.title('y_val')
-    plt.show()
+    # tst.oneD_plots(x_val_store)
+    # plt.title('x_val')
+    # tst.oneD_plots(y_val_store)
+    # plt.title('y_val')
+    # plt.show()
     
     with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
         pickle.dump(data_history, file)
@@ -275,21 +275,21 @@ def blobdetect(cap,img_process,savefilename):
         data_history.append(savedata)
         
         # tests: 
-        x_val, y_val = np.max(diff_x), np.max(diff_y)
-        print('x_val: ', x_val, 'y_val: ', y_val, 'z_val: ', z_val)
-        x_val_store.append(x_val)
-        y_val_store.append(y_val)
+        # x_val, y_val = np.max(diff_x), np.max(diff_y)
+        # print('x_val: ', x_val, 'y_val: ', y_val, 'z_val: ', z_val)
+        # x_val_store.append(x_val)
+        # y_val_store.append(y_val)
         
         if cv.waitKey(10) & 0xFF == ord('q'):
             print('Quitting...')
             break
     
     # Tests plots: 
-    tst.oneD_plots(x_val_store)
-    plt.title('x_val')
-    tst.oneD_plots(y_val_store)
-    plt.title('y_val')
-    plt.show()
+    # tst.oneD_plots(x_val_store)
+    # plt.title('x_val')
+    # tst.oneD_plots(y_val_store)
+    # plt.title('y_val')
+    # plt.show()
     
     with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
         pickle.dump(data_history, file)
@@ -329,9 +329,9 @@ def main(img_process_selector,loadpath):
     ref_frame = img_process(ref_frame) # was: (cap,ref_frame)
     cv.imshow('reference frame after filtering',ref_frame)
     # filenames to save output data: 
-    savefilename_LK = os.path.join('OF_outputs','LK_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    savefilename_LK = os.path.join('OF_outputs','LK_gray_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
     # savefilename_GF = os.path.join('OF_outputs','GF_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
-    savefilename_BD = os.path.join('OF_outputs','BD_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    savefilename_BD = os.path.join('OF_outputs','BD_gray_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
 
     # # multiprocess the 4 methods together
     # OF_LK_process = mp.Process(target=OF_LK, args=(cap,ref_frame,img_process,savefilename_LK))
@@ -354,7 +354,15 @@ def main(img_process_selector,loadpath):
         # print('All processes have finished.')
         
         # not using multi-processing: 
-        # OF_LK(cap,ref_frame,img_process,savefilename_LK)
+        OF_LK(cap,ref_frame,img_process,savefilename_LK)
+        
+        # take reference frame - reset cap frame number. 
+        if img_process_selector == 'w':
+            cap.set(cv.CAP_PROP_POS_FRAMES, 3) # since first ref frame is messy for some reason.. does not cover all pins in binary verison. 
+        ret, ref_frame = cap.read()
+        if not ret: print('ERROR: Cannot get frame.')
+        cap.set(cv.CAP_PROP_POS_FRAMES, 0) # reset back. 
+        
         # OF_GF(cap,ref_frame,img_process,savefilename_GF,mask_GF) # keeps gettig killed, due to RAM and CPU being saturated.
         blobdetect(cap,img_process,savefilename_BD)
 
@@ -364,6 +372,7 @@ def main(img_process_selector,loadpath):
 
     cap.release()
     cv.destroyAllWindows()
+    plt.show()
 if __name__ == '__main__':
     img_process_selector = sys.argv[1]
     path = sys.argv[2]

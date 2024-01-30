@@ -61,6 +61,11 @@ def quaternion_rotation_matrix(q0,q1,q2,q3):
     r22 = 2 * (q0 * q0 + q3 * q3) - 1
 
     # 3x3 rotation matrix
+    # rot_matrix = np.array([[r00, r01, r02, 0],
+    #                         [r10, r11, r12, 0],
+    #                         [r20, r21, r22, 0],
+    #                         [0, 0, 0, 1]])
+    
     rot_matrix = np.array([[r00, r01, r02],
                             [r10, r11, r12],
                             [r20, r21, r22]])
@@ -69,11 +74,20 @@ def quaternion_rotation_matrix(q0,q1,q2,q3):
 
 # transformation matrix apply
 def transform_franka_pillow(w,x,y,z):
-    trans_mat = np.array([[-1,0,0],[0,1,0],[0,0,-1]])
+    t_x, t_y, t_z = 0,68,2 # cm. Don't need these for now. Not looking at translation. 
+    # trans_mat = np.array([[-1,0,0,t_x],[0,1,0,t_y],[0,0,-1,t_z],[0,0,0,1]])
+    trans_mat = np.array([[-1,0,0],[0,1,0],[0,0,-1],[0,0,0]]) # use later. 
     panda_ee = quaternion_rotation_matrix(w,x,y,z)
-    transformed = np.matmul(panda_ee,trans_mat)
-    trans_euler = R.from_matrix(transformed).as_euler('xyz', degrees=True)
+    # panda_ee = R.from_quat([w,x,y,z]).as_euler('xyz', degrees=False)
+    # [x',y',z'] = Rotation_matrix * [x,y,z] --- MATRIX MULTIPLICATION RULE
+    # transformed = np.matmul(trans_mat, panda_ee)
+    quat_norm = np.linalg.norm([w,x,y,z])
+    if quat_norm < 1e-300:
+        trans_euler = np.array([0,0,0])
+    else:
+        trans_euler = R.from_quat([w,x,y,z]).as_euler('xyz', degrees=False)
     return trans_euler[0],trans_euler[1],trans_euler[2]
+    # return transformed
 
 # convert data
 def convertdata(data): 

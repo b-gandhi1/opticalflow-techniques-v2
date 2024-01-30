@@ -9,12 +9,12 @@ import matplotlib.pyplot as plt
 
 # load pickle data from outputs folder 
 
-def data_load_adapt(data_var):
-    max_len = max(len(d) for d in data_var)
-    padded = [np.pad(d, (0, max_len - len(d)), mode='constant') for d in data_var]
-    data_out = np.asarray(padded)
-    # data_out = data_var
-    return data_out
+# def data_load_adapt(data_var):
+#     max_len = max(len(d) for d in data_var)
+#     padded = [np.pad(d, (0, max_len - len(d)), mode='constant') for d in data_var]
+#     data_out = np.asarray(padded)
+#     # data_out = data_var
+#     return data_out
 
 # pressure plot - control vars. 
 def plot_pressure(web_pressures, fib_pressures): 
@@ -49,12 +49,12 @@ def linkingIO(gnd_truth_euler, fib_web_dat):
     # get max displacements from fib_web_dat
     # mag = fib_web_dat['magnitude']
     # ang = fib_web_dat['angle']
-    test = [data['x_val'] for data in fib_web_dat]
-    print('shape of 3d x_val : ',len(test[0]),len(test[1]),len(test[2]))
-    x_val = np.max(data_load_adapt([data['x_val'] for data in fib_web_dat]),axis=1)
-    print("x_val 1d shape: -----", np.shape(x_val))
-    print(x_val)
-    y_val = np.max(data_load_adapt([data['y_val'] for data in fib_web_dat]),axis=1)
+    # test = [data['x_val_1d'] for data in fib_web_dat]
+    # print('shape of 3d x_val : ',len(test[0]),len(test[1]),len(test[2]))
+    x_val = np.asarray([data['x_val_1d'] for data in fib_web_dat])
+    # print("x_val 1d shape: -----", np.shape(x_val))
+    # print(x_val)
+    y_val = np.asarray([data['y_val_1d'] for data in fib_web_dat])
     z_val = np.asarray([data['z_val'] for data in fib_web_dat],dtype=float) # already 1D
     timestamps = [data['timestamp'] for data in fib_web_dat] # already 1D
     # print('Shape displacements BD: ',np.shape(mag))
@@ -70,18 +70,19 @@ def linkingIO(gnd_truth_euler, fib_web_dat):
     plt.xlabel('Ground truth - Rot(x)')
     plt.ylabel('X Value (from frame)')
     plt.ylim([600,650])
+    plt.tight_layout()
     
     plt.subplot(312)
     plt.scatter(euler_y,y_val)
     plt.xlabel('Ground truth - Rot(y)')
     plt.ylabel('Y Value (from frame)')
+    plt.tight_layout()
     
     plt.subplot(313)
     plt.scatter(euler_z,z_val)
     plt.xlabel('Ground truth - Rot(z)')
     plt.ylabel('Z Value (from frame)')
-    
-    plt.tight_layout()    
+    plt.tight_layout()
 
 # def linkingIO_OF(gnd_truth_euler, fib_web_dat):
 #     # get max displacements from fib_web_dat
@@ -133,25 +134,25 @@ def main():
     # plt.title('Sample 2')
     
     # load data from cams
-    web_bd_gray1_raw = pickle.load(open("OF_outputs/data2_jan2023/BD_gray_web1_2024-01-23_13-27-23.pkl", "rb"))
-    web_bd_gray2_raw = pickle.load(open("OF_outputs/data2_jan2023/BD_gray_web2_2024-01-23_13-28-18.pkl", "rb"))
-    fib_bd_gray1_raw = pickle.load(open("OF_outputs/data2_jan2023/BD_gray_fib1_2024-01-23_12-54-44.pkl", "rb"))  
-    fib_bd_gray2_raw = pickle.load(open("OF_outputs/data2_jan2023/BD_gray_fib2_2024-01-23_12-56-19.pkl", "rb"))
+    web_bd_gray1_raw = pickle.load(open("OF_outputs/data3_jan2023/BD_gray_web1_2024-01-30_11-35-35.pkl", "rb"))
+    web_bd_gray2_raw = pickle.load(open("OF_outputs/data3_jan2023/BD_gray_web2_2024-01-30_11-36-49.pkl", "rb"))
+    fib_bd_gray1_raw = pickle.load(open("OF_outputs/data3_jan2023/BD_gray_fib1_2024-01-30_11-14-19.pkl", "rb"))  
+    fib_bd_gray2_raw = pickle.load(open("OF_outputs/data3_jan2023/BD_gray_fib2_2024-01-30_11-15-07.pkl", "rb"))
     
-    web_bd_bin1_raw = pickle.load(open("OF_outputs/data2_jan2023/BD_binary_web1_2024-01-23_13-29-48.pkl", "rb"))
-    web_bd_bin2_raw = pickle.load(open("OF_outputs/data2_jan2023/BD_binary_web2_2024-01-23_13-30-45.pkl", "rb"))
-    fib_bd_bin1_raw = pickle.load(open("OF_outputs/data2_jan2023/BD_binary_fib1_2024-01-23_13-02-54.pkl", "rb"))
-    fib_bd_bin2_raw = pickle.load(open("OF_outputs/data2_jan2023/BD_binary_fib2_2024-01-23_13-08-41.pkl", "rb"))
+    web_bd_bin1_raw = pickle.load(open("OF_outputs/data3_jan2023/BD_binary_web1_2024-01-30_11-22-31.pkl", "rb"))
+    web_bd_bin2_raw = pickle.load(open("OF_outputs/data3_jan2023/BD_binary_web2_2024-01-30_11-25-56.pkl", "rb"))
+    fib_bd_bin1_raw = pickle.load(open("OF_outputs/data3_jan2023/BD_binary_fib1_2024-01-30_11-16-48.pkl", "rb"))
+    fib_bd_bin2_raw = pickle.load(open("OF_outputs/data3_jan2023/BD_binary_fib2_2024-01-30_11-19-19.pkl", "rb"))
     
-    web_lk_gray1_raw = pickle.load(open("OF_outputs/data2_jan2023/LK_gray_web1_2024-01-23_13-25-03.pkl", "rb"))
-    web_lk_gray2_raw = pickle.load(open("OF_outputs/data2_jan2023/LK_gray_web2_2024-01-23_13-25-58.pkl", "rb"))
-    fib_lk_gray1_raw = pickle.load(open("OF_outputs/data2_jan2023/LK_gray_fib1_2024-01-23_13-13-22.pkl", "rb"))
-    fib_lk_gray2_raw = pickle.load(open("OF_outputs/data2_jan2023/LK_gray_fib2_2024-01-23_13-14-09.pkl", "rb"))
+    web_lk_gray1_raw = pickle.load(open("OF_outputs/data3_jan2023/LK_gray_web1_2024-01-30_11-35-35.pkl", "rb"))
+    web_lk_gray2_raw = pickle.load(open("OF_outputs/data3_jan2023/LK_gray_web2_2024-01-30_11-36-49.pkl", "rb"))
+    fib_lk_gray1_raw = pickle.load(open("OF_outputs/data3_jan2023/LK_gray_fib1_2024-01-30_11-04-56.pkl", "rb"))
+    fib_lk_gray2_raw = pickle.load(open("OF_outputs/data3_jan2023/LK_gray_fib2_2024-01-30_11-10-53.pkl", "rb"))
     
-    web_lk_bin1_raw = pickle.load(open("OF_outputs/data2_jan2023/LK_binary_web1_2024-01-23_13-18-06.pkl", "rb"))
-    web_lk_bin2_raw = pickle.load(open("OF_outputs/data2_jan2023/LK_binary_web2_2024-01-23_13-19-24.pkl", "rb"))
-    fib_lk_bin1_raw = pickle.load(open("OF_outputs/data2_jan2023/LK_binary_fib1_2024-01-23_13-10-26.pkl", "rb"))
-    fib_lk_bin2_raw = pickle.load(open("OF_outputs/data2_jan2023/LK_binary_fib2_2024-01-23_13-11-41.pkl", "rb"))
+    web_lk_bin1_raw = pickle.load(open("OF_outputs/data3_jan2023/LK_binary_web1_2024-01-30_11-22-31.pkl", "rb"))
+    web_lk_bin2_raw = pickle.load(open("OF_outputs/data3_jan2023/LK_binary_web2_2024-01-30_11-25-56.pkl", "rb"))
+    fib_lk_bin1_raw = pickle.load(open("OF_outputs/data3_jan2023/LK_binary_fib1_2024-01-30_11-17-34.pkl", "rb"))
+    fib_lk_bin2_raw = pickle.load(open("OF_outputs/data3_jan2023/LK_binary_fib2_2024-01-30_11-18-24.pkl", "rb"))
     
     # adapting datasets for useability:
     # web_bd_gray1, fib_bd_gray1, web_bd_gray2, fib_bd_gray2 = data_load_adapt(web_bd_gray1_raw), data_load_adapt(fib_bd_gray1_raw), data_load_adapt(web_bd_gray2_raw), data_load_adapt(fib_bd_gray2_raw)
