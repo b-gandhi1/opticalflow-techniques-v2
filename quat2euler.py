@@ -79,9 +79,9 @@ def transform_franka_pillow(w,x,y,z):
     # trans_mat = np.array([[-1,0,0,t_x],[0,1,0,t_y],[0,0,-1,t_z],[0,0,0,1]])
     trans_mat = np.array([[-1,0,0],[0,1,0],[0,0,-1],[0,0,0]]) # use later. 
     # [x',y',z'] = Rotation_matrix * [x,y,z] --- MATRIX MULTIPLICATION RULE
-    transformed = np.dot(trans_mat,np.array([w,x,y,z]))
-    # trans_euler = R.from_quat([w,x,y,z]).as_euler('xyz', degrees=False)
-    trans_euler = R.from_matrix(transformed).as_euler('xyz', degrees=False)
+    # transformed = np.dot(trans_mat,np.array([w,x,y,z]))
+    trans_euler = R.from_quat([w,x,y,z]).as_euler('xyz', degrees=False)
+    # trans_euler = R.from_matrix(transformed).as_euler('xyz', degrees=False)
     # quat_norm = np.linalg.norm([w,x,y,z])
     # if quat_norm < 1e-300:
     #     trans_euler = np.array([0,0,0])
@@ -114,6 +114,9 @@ def convertdata(data):
         # trans_w,trans_x,trans_y,trans_z = transform_franka_pillow(w,x,y,z)
         # roll_x, pitch_y, yaw_z = euler_from_quaternion(trans_w,trans_x,trans_y,trans_z)
         roll_x,pitch_y,yaw_z = euler_from_quaternion(x,y,z,w)
+        
+        # rotations switch axes: 
+        roll_x_new, pitch_y_new, yaw_z_new = pitch_y, roll_x, -yaw_z
         
         var = pd.DataFrame({'roll_x':[roll_x],'pitch_y':[pitch_y],'yaw_z':[yaw_z]}).astype(float)
         rotations = pd.concat([rotations,var],ignore_index=True)

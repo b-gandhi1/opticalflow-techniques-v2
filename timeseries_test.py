@@ -37,7 +37,7 @@ def load_data():
     
     web_df_euler2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/web2euler.csv', delimiter=',',header=None)
     
-    data1 = web_df_euler1
+    data1 = fib_df_euler1
     return data1
 
 # def data_load_adapt(data_var):
@@ -73,7 +73,7 @@ def main():
     plt.plot(range(len(x_vals)),(x_vals))
     plt.plot(range(len(y_vals)),y_vals)
     plt.plot(range(len(z_vals)),z_vals)
-    plt.legend(['roll_x','pitch_y','yaw_z'])
+    plt.legend(['roll_x','pitch_y','yaw_z'],loc='upper right')
     # plt.plot(range(len(z_vals)),w_z'])
     # plt.legend(['w','x','y','z'])
     # plt.ylim((-1,2*np.pi))

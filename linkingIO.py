@@ -60,9 +60,9 @@ def linkingIO(gnd_truth_euler, fib_web_dat):
     # print('Shape displacements BD: ',np.shape(mag))
     # print('XYZ shapes: ', np.shape(x_val),np.shape(y_val),np.shape(z_val))
     
-    euler_x = gnd_truth_euler.iloc[1:,0]
-    euler_y = gnd_truth_euler.iloc[1:,1]
-    euler_z = gnd_truth_euler.iloc[1:,2]
+    euler_x = gnd_truth_euler.iloc[0:,0]
+    euler_y = gnd_truth_euler.iloc[0:,1]
+    euler_z = gnd_truth_euler.iloc[0:,2]
         
     # plot against gnd_truth_euler
     plt.subplot(311)
@@ -108,25 +108,29 @@ def linkingIO(gnd_truth_euler, fib_web_dat):
 def main():
     # load ground truth data from franka, csv file 
     
-    fib_df1 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope1-20-Nov-2023--14-06-58.csv', delimiter=',')
-    fib_gnd_truth_df1 = fib_df1.iloc[1:,5:] # remove first data point to match sizes, and extract quaternions
+    # fib_df1 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope1-20-Nov-2023--14-06-58.csv', delimiter=',')
+    # fib_gnd_truth_df1 = fib_df1.iloc[1:,5:] # remove first data point to match sizes, and extract quaternions
     fib_df_euler1 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fib1euler.csv', delimiter=',',header=None,usecols=[1,2,3])
+    fib_df_euler1 = fib_df_euler1.iloc[0:900,:] # trim to 900 vals
     
-    fib_df2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope2-20-Nov-2023--14-09-23.csv', delimiter=',')
-    fib_gnd_truth_df2 = fib_df2.iloc[1:,5:] # remove first data point to match sizes, and extract quaternions
+    # fib_df2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope2-20-Nov-2023--14-09-23.csv', delimiter=',')
+    # fib_gnd_truth_df2 = fib_df2.iloc[1:,5:] # remove first data point to match sizes, and extract quaternions
     fib_df_euler2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fib2euler.csv', delimiter=',',header=None,usecols=[1,2,3])
+    fib_df_euler2 = fib_df_euler2.iloc[0:900,:] # trim to 900 vals
     
-    web_df1 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam1-20-Nov-2023--15-56-11.csv', delimiter=',')
-    web_gnd_truth_df1 = web_df1.iloc[1:,5:] # remove first data point to match sizes, and extract quaternions
+    # web_df1 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam1-20-Nov-2023--15-56-11.csv', delimiter=',')
+    # web_gnd_truth_df1 = web_df1.iloc[1:,5:] # remove first data point to match sizes, and extract quaternions
     web_df_euler1 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/web1euler.csv', delimiter=',',header=None,usecols=[1,2,3])
+    web_df_euler1 = web_df_euler1.iloc[0:900,:] # trim to 900 vals
     
-    web_df2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam2-20-Nov-2023--15-59-11.csv', delimiter=',')
-    web_gnd_truth_df2 = web_df2.iloc[1:,5:] # remove first data point to match sizes, and extract quaternions
+    # web_df2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam2-20-Nov-2023--15-59-11.csv', delimiter=',')
+    # web_gnd_truth_df2 = web_df2.iloc[1:,5:] # remove first data point to match sizes, and extract quaternions
     web_df_euler2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/web2euler.csv', delimiter=',',header=None,usecols=[1,2,3])
+    web_df_euler2 = web_df_euler2.iloc[0:900,:] # trim to 900 vals
     
     # pressure in pillow (kPa) and pump state - plot this for a control measure. 
-    fib_pressures2 = fib_df2.iloc[1:,3:4+1]
-    web_pressures2 = web_df2.iloc[1:,3:4+1]
+    # fib_pressures2 = fib_df2.iloc[1:,3:4+1]
+    # web_pressures2 = web_df2.iloc[1:,3:4+1]
     
     # plot_pressure(web_pressures1,fib_pressures1) 
     # plt.title('Sample 1')
