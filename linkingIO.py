@@ -5,7 +5,7 @@ import pickle
 import matplotlib.pyplot as plt
 from sklearn import preprocessing as prep
 import sklearn.metrics as metrics
-from scipy.stats import pearsonr, spearmanr
+from scipy.stats import pearsonr, spearmanr, weightedtau, kendalltau
 
 # AIM: Link the OF and BD outputs to the ground truth in Euler format, and find a relationship between the two. 
 
@@ -22,7 +22,6 @@ from scipy.stats import pearsonr, spearmanr
 # pressure plot - control vars. 
 
 statistics = []
-stats_col = []
 
 def normalize_vector(vector):
     min_value = np.min(vector)
@@ -37,8 +36,11 @@ def statistics_calc(experimental_data, ground_truth):
     # variables can be +vely or -vely linearly correlated. 
     corr_nonlin, _ = spearmanr(experimental_data, ground_truth) # spearman correlation (nonlinear). High corr ~= 1. -1 < corr_range < 1. same as pearson.
     r_sq = metrics.r2_score(ground_truth,experimental_data)
-    
-    return corr_linear, corr_nonlin, r_sq
+    corr_kendalltau = kendalltau(ground_truth,experimental_data)
+    corr_weightedtau = weightedtau(ground_truth,experimental_data, rank=True, weigher=None, additive=False)
+
+    # TEST THE COMMANDS ABOVE !!!! ----------
+    return corr_linear, corr_nonlin, r_sq, corr_kendalltau[0], corr_kendalltau[1], corr_weightedtau[0]
 
 def plot_pressure(web_pressures, fib_pressures): 
     web_kpa = web_pressures.iloc[1:,0]
@@ -112,39 +114,39 @@ def linkingIO(gnd_truth_euler, fib_web_dat, t_z_gnd):
     
     # plot against gnd_truth_euler
     plt.subplot(411)
-    plt.scatter(euler_x,x_val)
-    plt.xlabel('Ground truth - Rot(x)')
-    plt.ylabel('X Value (from frame)')
-    # plt.plot(euler_x_norm)
-    # plt.plot(x_val_norm)
+    # plt.scatter(euler_x,x_val)
+    # plt.xlabel('Ground truth - Rot(x)')
+    # plt.ylabel('X Value (from frame)')
+    plt.plot(euler_x_norm)
+    plt.plot(x_val_norm)
     # plt.ylim([-2*np.pi,2*np.pi])
     plt.legend(['gnd truth','x_val'],loc='upper right')
     plt.tight_layout()
     
     plt.subplot(412)
-    plt.scatter(euler_y,y_val)
-    plt.xlabel('Ground truth - Rot(y)')
-    plt.ylabel('Y Value (from frame)')
-    # plt.plot(euler_y_norm)
-    # plt.plot(y_val_norm)
+    # plt.scatter(euler_y,y_val)
+    # plt.xlabel('Ground truth - Rot(y)')
+    # plt.ylabel('Y Value (from frame)')
+    plt.plot(euler_y_norm)
+    plt.plot(y_val_norm)
     # plt.ylim([-2*np.pi,2*np.pi])
     plt.tight_layout()
     
     plt.subplot(413)
-    plt.scatter(euler_z,z_val)
-    plt.xlabel('Ground truth - Rot(z)')
-    plt.ylabel('Z Value (from frame)')
-    # plt.plot(euler_z_norm)
-    # plt.plot(z_val_norm)
+    # plt.scatter(euler_z,z_val)
+    # plt.xlabel('Ground truth - Rot(z)')
+    # plt.ylabel('Z Value (from frame)')
+    plt.plot(euler_z_norm)
+    plt.plot(z_val_norm)
     # plt.ylim([-2*np.pi,2*np.pi])
     plt.tight_layout()
     
     plt.subplot(414)
-    plt.scatter(t_z_gnd,z_val)
-    plt.xlabel('Ground truth - Trans(z)')
-    plt.ylabel('Z Value (from frame)')
-    # plt.plot(t_z_gnd_norm)
-    # plt.plot(z_val_norm)
+    # plt.scatter(t_z_gnd,z_val)
+    # plt.xlabel('Ground truth - Trans(z)')
+    # plt.ylabel('Z Value (from frame)')
+    plt.plot(t_z_gnd_norm)
+    plt.plot(z_val_norm)
     # plt.ylim([-2*np.pi,2*np.pi])
     plt.tight_layout()
     
@@ -281,7 +283,7 @@ def main():
     plt.show()
     
     # save statistics to a csv file
-    statistics_df = pd.DataFrame(statistics,columns=['Pearson Corr (lin)', 'Spearman Corr (non-lin)', 'R^2'],dtype=float)
+    statistics_df = pd.DataFrame(statistics,columns=['Pearson Corr (lin)', 'Spearman Corr (non-lin)', 'R^2', 'Kendall Tau', 'kendall p-val', 'Weighted Tau'],dtype=float)
     statistics_df.to_csv('OF_outputs/statistics.csv')
     
 if __name__ == "__main__":
