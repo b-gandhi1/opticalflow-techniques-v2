@@ -29,10 +29,10 @@ def fibrescope_process(frame):
     mask_blank = np.zeros_like(gray,dtype='uint8') # ,dtype='uint8'
     # x,y,w,h = 350,280,200,110 # after resizing frame size. 
     # rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
-    circle = cv.circle(mask_blank, (430,215), 100, (255,255,255), -1)
+    circle = cv.circle(mask_blank, (355,345), 100, (255,255,255), -1)
     masked = cv.bitwise_and(gray,gray,mask=circle)
     brightened = cv.addWeighted(masked, CONTRAST, np.zeros(masked.shape, masked.dtype), 0, BRIGHTNESS)     
-    binary = cv.threshold(brightened,55,255,cv.THRESH_BINARY)[1] # might remove: + cv.thresh_otsu
+    binary = cv.threshold(brightened,57,255,cv.THRESH_BINARY)[1] # might remove: + cv.thresh_otsu
     morph_open = cv.morphologyEx(binary,cv.MORPH_OPEN,kernel)
     morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
     dilated = cv.dilate(morph_close,kernel)
@@ -57,15 +57,15 @@ def webcam_process(frame):
     kernel = np.ones((4,4),np.uint8)
     gray = cv.cvtColor(frame,cv.COLOR_RGB2GRAY)
     mask_blank = np.zeros_like(gray,dtype='uint8') # ,dtype='uint8'
-    x,y,w,h = 0,60,629,340 # (x,y) = top left params
+    x,y,w,h = 0,60,635,340 # (x,y) = top left params
     rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
     masked = cv.bitwise_and(gray,gray,mask=rect)
-    binary = cv.threshold(masked,125,255,cv.THRESH_BINARY)[1] 
+    binary = cv.threshold(masked,50,255,cv.THRESH_BINARY)[1] 
     morph_open = cv.morphologyEx(binary,cv.MORPH_OPEN,kernel)
     morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
     dilated = cv.dilate(morph_close,kernel)
 
-    return masked 
+    return dilated 
 
 def z_brightness(frame): # use this to get average brightness of each frame
     norm_frame = frame/np.max(frame)
@@ -156,11 +156,11 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
         data_history.append(savedata)
         
         # tests: 
-        # x_val, y_val = np.asarray(p1[...,0]), np.asarray(p1[...,1])
+        x_val, y_val = np.asarray(p1[...,0]), np.asarray(p1[...,1])
         # print('x_val size: ', np.shape(x_val), ' y_val size: ', np.shape(y_val))
         # print('x_mean: ', np.mean(x_val), ' y_mean: ', np.mean(y_val))
-        # x_val_store.append(np.mean(x_val))
-        # y_val_store.append(np.mean(y_val))
+        x_val_store.append(np.mean(x_val))
+        y_val_store.append(np.mean(y_val))
         
         # Tests conclusion = TIME TO BE MEAN!! 
         
@@ -173,11 +173,11 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
         # p0 = good_new.reshape(-1, 1, 2)
     
     # test plots
-    # tst.oneD_plots(x_val_store)
-    # plt.title('x_val')
-    # tst.oneD_plots(y_val_store)
-    # plt.title('y_val')
-    # plt.show()
+    tst.oneD_plots(x_val_store)
+    plt.title('x_val')
+    tst.oneD_plots(y_val_store)
+    plt.title('y_val')
+    plt.show()
     
     with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
         pickle.dump(data_history, file)
@@ -227,13 +227,13 @@ def blobdetect(cap,img_process,savefilename):
     if img_process == fibrescope_process:
         params.minThreshold = 50
     if img_process == webcam_process:
-        params.minThreshold = 120
+        params.minThreshold = 30
     # params.minThreshold = ... # 50 # 120 
-    params.maxThreshold = 170 
+    params.maxThreshold = 120 
     params.blobColor = 255
     params.filterByArea = False
     params.filterByCircularity = False
-    params.minCircularity = 0.8
+    params.minCircularity = 0.5 # works for grayscale webcam
     params.filterByConvexity = False
     params.minConvexity = 0.87
     params.filterByInertia = False
@@ -250,10 +250,16 @@ def blobdetect(cap,img_process,savefilename):
     
         keypoints = detector.detect(frame) # detect blobs
         centroids = np.array([keypoint.pt for keypoint in keypoints]) # extract centroids of blobs
-    
+        
+        # if centroids is empty, diff_x and diff_y are zeros
+        if centroids.size == 0:
+            diff_x, diff_y = 0, 0
+        else:
+            diff_x = np.diff(centroids[:,0])
+            diff_y = np.diff(centroids[:,1])
         # simple euclidean dist, max
-        diff_x = np.diff(centroids[:,0])
-        diff_y = np.diff(centroids[:,1])
+        # diff_x = np.diff(centroids[:,0])
+        # diff_y = np.diff(centroids[:,1])
         # dist_mag = np.sum([diff_x**2+diff_y**2],axis=0)
         magnitude, angle = cv.cartToPolar(diff_x, diff_y)
         z_val = z_brightness(frame)
@@ -267,29 +273,29 @@ def blobdetect(cap,img_process,savefilename):
         "magnitude": magnitude, 
         "angle": angle,
         "x_val": diff_x, 
-        "x_val_1d": np.max(diff_x),
+        "x_val_1d": np.median(diff_x),
         "y_val": diff_y,
-        "y_val_1d": np.max(diff_y),
+        "y_val_1d": np.median(diff_y),
         "z_val": z_val 
         }
         data_history.append(savedata)
         
         # tests: 
-        # x_val, y_val = np.max(diff_x), np.max(diff_y)
+        x_val, y_val = np.median(diff_x), np.median(diff_y)
         # print('x_val: ', x_val, 'y_val: ', y_val, 'z_val: ', z_val)
-        # x_val_store.append(x_val)
-        # y_val_store.append(y_val)
+        x_val_store.append(x_val)
+        y_val_store.append(y_val)
         
         if cv.waitKey(10) & 0xFF == ord('q'):
             print('Quitting...')
             break
     
     # Tests plots: 
-    # tst.oneD_plots(x_val_store)
-    # plt.title('x_val')
-    # tst.oneD_plots(y_val_store)
-    # plt.title('y_val')
-    # plt.show()
+    tst.oneD_plots(x_val_store)
+    plt.title('x_val')
+    tst.oneD_plots(y_val_store)
+    plt.title('y_val')
+    plt.show()
     
     with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
         pickle.dump(data_history, file)
@@ -306,7 +312,7 @@ def main(img_process_selector,loadpath):
     
     # take reference frame 
     if img_process_selector == 'w':
-        cap.set(cv.CAP_PROP_POS_FRAMES, 3) # since first ref frame is messy for some reason.. does not cover all pins in binary verison. 
+        cap.set(cv.CAP_PROP_POS_FRAMES, 13) # since first ref frame is messy for some reason.. does not cover all pins in binary verison. 
     ret, ref_frame = cap.read()
     if not ret: print('ERROR: Cannot get frame.')
     cap.set(cv.CAP_PROP_POS_FRAMES, 0) # reset back. 
@@ -329,9 +335,9 @@ def main(img_process_selector,loadpath):
     ref_frame = img_process(ref_frame) # was: (cap,ref_frame)
     cv.imshow('reference frame after filtering',ref_frame)
     # filenames to save output data: 
-    savefilename_LK = os.path.join('OF_outputs','LK_gray_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    savefilename_LK = os.path.join('OF_outputs/data4_feb2024','LK_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
     # savefilename_GF = os.path.join('OF_outputs','GF_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
-    savefilename_BD = os.path.join('OF_outputs','BD_gray_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    savefilename_BD = os.path.join('OF_outputs/data4_feb2024','BD_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
 
     # # multiprocess the 4 methods together
     # OF_LK_process = mp.Process(target=OF_LK, args=(cap,ref_frame,img_process,savefilename_LK))

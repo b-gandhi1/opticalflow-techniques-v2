@@ -47,11 +47,11 @@ def load_data():
 #     # data_out = data_var
 #     return data_out
 
-# def oneD_plots(timeseries):
-#     plt.figure()
-#     plt.plot(range(len(timeseries)),timeseries)
-#     plt.tight_layout()
-#     plt.show()
+def oneD_plots(timeseries):
+    plt.figure()
+    plt.plot(range(len(timeseries)),timeseries)
+    plt.tight_layout()
+    plt.show()
 
 def main():
     data = load_data()
