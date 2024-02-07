@@ -32,15 +32,16 @@ def normalize_vector(vector):
     return normalized_vector
 
 def statistics_calc(experimental_data, ground_truth):
-    corr_linear, _ = pearsonr(experimental_data, ground_truth) # pearson correlation (linear). Low corr ~= 0. -0.5 < poor corr < 0.5. -1 < corr_range < 1. 
+    # corr_linear, _ = pearsonr(experimental_data, ground_truth,alternative='two-sided') # pearson correlation (linear). Low corr ~= 0. -0.5 < poor corr < 0.5. -1 < corr_range < 1. 
     # variables can be +vely or -vely linearly correlated. 
-    corr_nonlin, _ = spearmanr(experimental_data, ground_truth) # spearman correlation (nonlinear). High corr ~= 1. -1 < corr_range < 1. same as pearson.
-    r_sq = metrics.r2_score(ground_truth,experimental_data)
+    corr_nonlin, _ = spearmanr(experimental_data, ground_truth,alternative='two-sided',nan_policy='propagate') # spearman correlation (nonlinear). High corr ~= 1. -1 < corr_range < 1. same as pearson.
+    r_sq = metrics.r2_score(ground_truth,experimental_data,force_finite=False)
     corr_kendalltau = kendalltau(ground_truth,experimental_data)
     corr_weightedtau = weightedtau(ground_truth,experimental_data, rank=True, weigher=None, additive=False)
 
     # TEST THE COMMANDS ABOVE !!!! ----------
-    return corr_linear, corr_nonlin, r_sq, corr_kendalltau[0], corr_kendalltau[1], corr_weightedtau[0]
+    # return corr_linear, corr_nonlin, r_sq, corr_kendalltau[0], corr_kendalltau[1], corr_weightedtau[0]
+    return corr_nonlin, r_sq, corr_kendalltau[0], corr_kendalltau[1], corr_weightedtau[0]
 
 def plot_pressure(web_pressures, fib_pressures): 
     web_kpa = web_pressures.iloc[1:,0]
@@ -66,8 +67,7 @@ def plot_pressure(web_pressures, fib_pressures):
     
     plt.tight_layout()
     plt.legend()
-    
-    # plt.savefig('result_figs/controlVarsSample2.svg',format = 'svg')
+
     plt.show()
     
 def linkingIO(gnd_truth_euler, fib_web_dat, t_z_gnd):
@@ -159,67 +159,75 @@ def linkingIO(gnd_truth_euler, fib_web_dat, t_z_gnd):
     return statistics
 def main():
     # load ground truth data from franka, csv file 
-    
+    fib1gnd = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope1-05-Feb-2024--16-55-31.csv', delimiter=',',dtype={'Pressure (kPa)': float,'Pump State': float},usecols=['Pressure (kPa)','Pump State'])
+    fib2gnd = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope2-05-Feb-2024--17-25-47.csv', delimiter=',',dtype={'Pressure (kPa)': float,'Pump State': float},usecols=['Pressure (kPa)','Pump State'])
+    web1gnd = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam1-05-Feb-2024--15-04-50.csv', delimiter=',',dtype={'Pressure (kPa)': float,'Pump State': float},usecols=['Pressure (kPa)','Pump State'])
+    web2gnd = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam2-05-Feb-2024--15-15-37.csv', delimiter=',',dtype={'Pressure (kPa)': float,'Pump State': float},usecols=['Pressure (kPa)','Pump State'])
+
     # fib_df1 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope1-20-Nov-2023--14-06-58.csv', delimiter=',')
     # fib_gnd_truth_df1 = fib_df1.iloc[1:,5:] # remove first data point to match sizes, and extract quaternions
-    fib_df_euler1 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fib1euler.csv', delimiter=',',header=None,usecols=[1,2,3])
-    fib_df_euler1 = fib_df_euler1.iloc[1:901,:].astype(float) # trim to 900 vals
+    fib_df_euler1 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fib1euler.csv', delimiter=',',usecols=['roll_x','pitch_y','yaw_z'],dtype={'roll_x': float,'pitch_y': float,'yaw_z': float})
+    # fib_df_euler1 = fib_df_euler1.iloc[1:,:].astype(float) # trim to 900 vals
     
     # fib_df2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope2-20-Nov-2023--14-09-23.csv', delimiter=',')
     # fib_gnd_truth_df2 = fib_df2.iloc[1:,5:] # remove first data point to match sizes, and extract quaternions
-    fib_df_euler2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fib2euler.csv', delimiter=',',header=None,usecols=[1,2,3])
-    fib_df_euler2 = fib_df_euler2.iloc[1:901,:].astype(float) # trim to 900 vals
+    fib_df_euler2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fib2euler.csv', delimiter=',',usecols=['roll_x','pitch_y','yaw_z'],dtype={'roll_x': float,'pitch_y': float,'yaw_z': float})
+    fib_df_euler2 = fib_df_euler2.iloc[1:,:].astype(float) # trim to 900 vals
     
     # web_df1 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam1-20-Nov-2023--15-56-11.csv', delimiter=',')
     # web_gnd_truth_df1 = web_df1.iloc[1:,5:] # remove first data point to match sizes, and extract quaternions
-    web_df_euler1 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/web1euler.csv', delimiter=',',header=None,usecols=[1,2,3])
-    web_df_euler1 = web_df_euler1.iloc[1:901,:].astype(float) # trim to 900 vals
+    web_df_euler1 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/web1euler.csv', delimiter=',',usecols=['roll_x','pitch_y','yaw_z'],dtype={'roll_x': float,'pitch_y': float,'yaw_z': float})
+    web_df_euler1 = web_df_euler1.iloc[1:,:].astype(float) # trim to 900 vals
     
     # web_df2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam2-20-Nov-2023--15-59-11.csv', delimiter=',')
     # web_gnd_truth_df2 = web_df2.iloc[1:,5:] # remove first data point to match sizes, and extract quaternions
-    web_df_euler2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/web2euler.csv', delimiter=',',header=None,usecols=[1,2,3])
-    web_df_euler2 = web_df_euler2.iloc[1:901,:].astype(float) # trim to 900 vals
+    web_df_euler2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/web2euler.csv', delimiter=',',usecols=['roll_x','pitch_y','yaw_z'],dtype={'roll_x': float,'pitch_y': float,'yaw_z': float})
+    web_df_euler2 = web_df_euler2.iloc[1:,:].astype(float) # trim to 900 vals
     
     # pressure in pillow (kPa) and pump state - plot this for a control measure. 
-    # fib_pressures2 = fib_df2.iloc[1:,3:4+1]
-    # web_pressures2 = web_df2.iloc[1:,3:4+1]
+    fib_pressures1 = fib1gnd.loc[:,['Pressure (kPa)','Pump State']]
+    web_pressures1 = web1gnd.loc[:,['Pressure (kPa)','Pump State']]
+    fib_pressures2 = fib2gnd.loc[:,['Pressure (kPa)','Pump State']]
+    web_pressures2 = web2gnd.loc[:,['Pressure (kPa)','Pump State']]
     
     # plot_pressure(web_pressures1,fib_pressures1) 
-    # plt.title('Sample 1')
+    # plt.title('Sample 1: Air pressure vairation')
+    # plt.savefig('result_figs/controlVarsSample1.svg',format = 'svg')
     # plot_pressure(web_pressures2,fib_pressures2) # plots control variables in pillow. 
-    # plt.title('Sample 2')
+    # plt.title('Sample 2: Air pressure vairation')
+    # plt.savefig('result_figs/controlVarsSample2.svg',format = 'svg')
     
     # load data from cams
-    web_bd_gray1_raw = pickle.load(open("OF_outputs/data3_jan2023/BD_gray_web1_2024-01-30_11-35-35.pkl", "rb"))
-    web_bd_gray2_raw = pickle.load(open("OF_outputs/data3_jan2023/BD_gray_web2_2024-01-30_11-36-49.pkl", "rb"))
-    fib_bd_gray1_raw = pickle.load(open("OF_outputs/data3_jan2023/BD_gray_fib1_2024-01-30_11-14-19.pkl", "rb"))  
-    fib_bd_gray2_raw = pickle.load(open("OF_outputs/data3_jan2023/BD_gray_fib2_2024-01-30_11-15-07.pkl", "rb"))
+    web_bd_gray1_raw = pickle.load(open("OF_outputs/data4_feb2024/BD_gray_web1_2024-02-06_17-14-06.pkl", "rb"))
+    web_bd_gray2_raw = pickle.load(open("OF_outputs/data4_feb2024/BD_gray_web2_2024-02-06_17-15-22.pkl", "rb"))
+    fib_bd_gray1_raw = pickle.load(open("OF_outputs/data4_feb2024/BD_gray_fib1_2024-02-06_17-17-16.pkl", "rb"))  
+    fib_bd_gray2_raw = pickle.load(open("OF_outputs/data4_feb2024/BD_gray_fib2_2024-02-06_17-36-31.pkl", "rb"))
     
-    web_bd_bin1_raw = pickle.load(open("OF_outputs/data3_jan2023/BD_binary_web1_2024-01-30_11-22-31.pkl", "rb"))
-    web_bd_bin2_raw = pickle.load(open("OF_outputs/data3_jan2023/BD_binary_web2_2024-01-30_11-25-56.pkl", "rb"))
-    fib_bd_bin1_raw = pickle.load(open("OF_outputs/data3_jan2023/BD_binary_fib1_2024-01-30_11-16-48.pkl", "rb"))
-    fib_bd_bin2_raw = pickle.load(open("OF_outputs/data3_jan2023/BD_binary_fib2_2024-01-30_11-19-19.pkl", "rb"))
+    web_bd_bin1_raw = pickle.load(open("OF_outputs/data4_feb2024/BD_binary_web1_2024-02-06_18-26-16.pkl", "rb"))
+    web_bd_bin2_raw = pickle.load(open("OF_outputs/data4_feb2024/BD_binary_web2_2024-02-06_18-28-22.pkl", "rb"))
+    fib_bd_bin1_raw = pickle.load(open("OF_outputs/data4_feb2024/BD_binary_fib1_2024-02-06_17-40-26.pkl", "rb"))
+    fib_bd_bin2_raw = pickle.load(open("OF_outputs/data4_feb2024/BD_binary_fib2_2024-02-06_17-42-17.pkl", "rb"))
     
-    web_lk_gray1_raw = pickle.load(open("OF_outputs/data3_jan2023/LK_gray_web1_2024-01-30_11-35-35.pkl", "rb"))
-    web_lk_gray2_raw = pickle.load(open("OF_outputs/data3_jan2023/LK_gray_web2_2024-01-30_11-36-49.pkl", "rb"))
-    fib_lk_gray1_raw = pickle.load(open("OF_outputs/data3_jan2023/LK_gray_fib1_2024-01-30_11-04-56.pkl", "rb"))
-    fib_lk_gray2_raw = pickle.load(open("OF_outputs/data3_jan2023/LK_gray_fib2_2024-01-30_11-10-53.pkl", "rb"))
+    web_lk_gray1_raw = pickle.load(open("OF_outputs/data4_feb2024/LK_gray_web1_2024-02-06_17-14-06.pkl", "rb"))
+    web_lk_gray2_raw = pickle.load(open("OF_outputs/data4_feb2024/LK_gray_web2_2024-02-06_17-15-22.pkl", "rb"))
+    fib_lk_gray1_raw = pickle.load(open("OF_outputs/data4_feb2024/LK_gray_fib1_2024-02-06_17-17-16.pkl", "rb"))
+    fib_lk_gray2_raw = pickle.load(open("OF_outputs/data4_feb2024/LK_gray_fib2_2024-02-06_17-36-31.pkl", "rb"))
     
-    web_lk_bin1_raw = pickle.load(open("OF_outputs/data3_jan2023/LK_binary_web1_2024-01-30_11-22-31.pkl", "rb"))
-    web_lk_bin2_raw = pickle.load(open("OF_outputs/data3_jan2023/LK_binary_web2_2024-01-30_11-25-56.pkl", "rb"))
-    fib_lk_bin1_raw = pickle.load(open("OF_outputs/data3_jan2023/LK_binary_fib1_2024-01-30_11-17-34.pkl", "rb"))
-    fib_lk_bin2_raw = pickle.load(open("OF_outputs/data3_jan2023/LK_binary_fib2_2024-01-30_11-18-24.pkl", "rb"))
+    web_lk_bin1_raw = pickle.load(open("OF_outputs/data4_feb2024/LK_binary_web1_2024-02-06_18-26-16.pkl", "rb"))
+    web_lk_bin2_raw = pickle.load(open("OF_outputs/data4_feb2024/LK_binary_web2_2024-02-06_18-28-22.pkl", "rb"))
+    fib_lk_bin1_raw = pickle.load(open("OF_outputs/data4_feb2024/LK_binary_fib1_2024-02-06_17-40-26.pkl", "rb"))
+    fib_lk_bin2_raw = pickle.load(open("OF_outputs/data4_feb2024/LK_binary_fib2_2024-02-06_17-42-17.pkl", "rb"))
     
     # t_z_gnd load
-    fib_z_1 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/franka_raw/franka1_modified.csv',delimiter=',',header=None)
-    fib_z_1 = fib_z_1.iloc[1:901,2].astype(float)
+    fib_z_1 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope1-05-Feb-2024--16-55-31.csv', delimiter=',',dtype={'Franka Tz':float},usecols=['Franka Tz'])
+    # fib_z_1 = fib_z_1.iloc[1:,2].astype(float)
     # print('fib_z_1 shape: ',np.shape(fib_z_1))
-    fib_z_2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/franka_raw/franka2_modified.csv',delimiter=',',header=None)
-    fib_z_2 = fib_z_2.iloc[1:901,2].astype(float)
-    web_z_1 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/franka_raw/franka3_modified.csv',delimiter=',',header=None)
-    web_z_1 = web_z_1.iloc[1:901,2].astype(float)
-    web_z_2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/franka_raw/franka4_modified.csv',delimiter=',',header=None)
-    web_z_2 = web_z_2.iloc[1:901,2].astype(float)
+    fib_z_2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope2-05-Feb-2024--17-25-47.csv', delimiter=',',dtype={'Franka Tz': float},usecols=['Franka Tz'])
+    # fib_z_2 = fib_z_2.iloc[1:,2].astype(float)
+    web_z_1 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam1-05-Feb-2024--15-04-50.csv', delimiter=',',dtype={'Franka Tz': float},usecols=['Franka Tz'])
+    # web_z_1 = web_z_1.iloc[1:,2].astype(float)
+    web_z_2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam2-05-Feb-2024--15-15-37.csv', delimiter=',',dtype={'Franka Tz': float},usecols=['Franka Tz'])
+    # web_z_2 = web_z_2.iloc[1:,2].astype(float)
     
     # outputs for linking IO plots: 
     # webcam: 
@@ -283,7 +291,8 @@ def main():
     plt.show()
     
     # save statistics to a csv file
-    statistics_df = pd.DataFrame(statistics,columns=['Pearson Corr (lin)', 'Spearman Corr (non-lin)', 'R^2', 'Kendall Tau', 'kendall p-val', 'Weighted Tau'],dtype=float)
+    # statistics_df = pd.DataFrame(statistics,columns=['Pearson Corr (lin)', 'Spearman Corr (non-lin)', 'R^2', 'Kendall Tau', 'kendall p-val', 'Weighted Tau'],dtype=float)
+    statistics_df = pd.DataFrame(statistics,columns=['Spearman Corr (non-lin)', 'R^2', 'Kendall Tau', 'kendall p-val', 'Weighted Tau'],dtype=float)
     statistics_df.to_csv('OF_outputs/statistics.csv')
     
 if __name__ == "__main__":

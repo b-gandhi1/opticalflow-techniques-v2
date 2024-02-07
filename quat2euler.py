@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd	
 from scipy.spatial.transform import Rotation as R
-import ast
-import re
+# import ast
+import matplotlib.pyplot as plt
 
 def euler_from_quaternion(x, y, z, w):
     """
@@ -78,19 +78,21 @@ def quaternion_rotation_matrix(q0,q1,q2,q3):
 def transform_franka_pillow(w,x,y,z):
     # trans_mat = np.array([[-1,0,0,t_x],[0,1,0,t_y],[0,0,-1,t_z],[0,0,0,1]])
     trans_mat = np.array([[-1,0,0],[0,1,0],[0,0,-1],[0,0,0]]) # use later. 
+    rotation = R.from_matrix(trans_mat).as_quat()
     # [x',y',z'] = Rotation_matrix * [x,y,z] --- MATRIX MULTIPLICATION RULE
-    # transformed = np.dot(trans_mat,np.array([w,x,y,z]))
-    trans_euler = R.from_quat([w,x,y,z]).as_euler('xyz', degrees=False)
-    # trans_euler = R.from_matrix(transformed).as_euler('xyz', degrees=False)
-    # quat_norm = np.linalg.norm([w,x,y,z])
-    # if quat_norm < 1e-300:
-    #     trans_euler = np.array([0,0,0])
-    # else:
-    #     trans_euler = R.from_quat([w,x,y,z]).as_euler('xyz', degrees=False)
+    # orig_euler = R.from_quat([w,x,y,z]).as_euler('xyz', degrees=False)
     
+    orig_euler = euler_from_quaternion(x,y,z,w)
     
-    return trans_euler[0],trans_euler[1],trans_euler[2]
-    # return transformed
+    # apply rotation: --------
+    # p, q = np.array([0,x,y,z]), rotation
+    # # two step multiplication process 
+    # new_p = (1/q) * p * q
+    # new_p = q * new_p * (1/q)
+
+    # trans_euler = R.from_quat(new_p).as_euler('xyz', degrees=False)
+    
+    return orig_euler[0],orig_euler[1],orig_euler[2]
 
 # convert data
 def convertdata(data): 
@@ -104,10 +106,10 @@ def convertdata(data):
         
         # print(quat)
         # print(type(quat))
-        w = float(quat.iloc[6])
-        x = float(quat.iloc[3])
-        y = float(quat.iloc[4])
-        z = float(quat.iloc[5])
+        w = float(quat.iloc[11])
+        x = float(quat.iloc[8])
+        y = float(quat.iloc[9])
+        z = float(quat.iloc[10])
         
         # print('quat contents: ',w,x,y,z)
         # print(type(w),type(x),type(y),type(z))
@@ -118,7 +120,7 @@ def convertdata(data):
         # rotations switch axes: 
         roll_x_new, pitch_y_new, yaw_z_new = pitch_y, roll_x, -yaw_z
         
-        var = pd.DataFrame({'roll_x':[roll_x],'pitch_y':[pitch_y],'yaw_z':[yaw_z]}).astype(float)
+        var = pd.DataFrame({'roll_x':[roll_x_new],'pitch_y':[pitch_y_new],'yaw_z':[yaw_z_new]}).astype(float)
         rotations = pd.concat([rotations,var],ignore_index=True)
         # print('quat contents: --')
         # print(var)
@@ -126,6 +128,13 @@ def convertdata(data):
     # print('data type for rotations: ',type(rotations))
     return rotations
 
+def plt_euler(rollX,pitchY,yawZ):
+    plt.figure()
+    plt.plot(rollX)
+    plt.plot(pitchY)
+    plt.plot(yawZ)
+    plt.legend(['roll_x','pitch_y','yaw_z'])
+    # plt.show()
 def main():
     
     # load data > extract data
@@ -141,21 +150,28 @@ def main():
     # web_df2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam2-20-Nov-2023--15-59-11.csv', delimiter=',',dtype={'Franka a': float,'Franka bi': float,'Franka cj': float,'Franka EE jk': float},header=None)
     # web_gnd_truth_df2 = web_df2.iloc[1:,5:] # remove first data point to match sizes, and extract quaternions
 
-    franka1 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/franka_raw/franka1_modified.csv', delimiter=',',dtype=float)
-    franka2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/franka_raw/franka2_modified.csv', delimiter=',',dtype=float)
-    franka3 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/franka_raw/franka3_modified.csv', delimiter=',',dtype=float)
-    franka4 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/franka_raw/franka4_modified.csv', delimiter=',',dtype=float)
+    fib1gnd = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope1-05-Feb-2024--16-55-31.csv', delimiter=',',dtype={'Franka Rx': float,'Franka Ry': float,'Franka Rz': float,'Franka Rw': float})
+    fib2gnd = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope2-05-Feb-2024--17-25-47.csv', delimiter=',',dtype={'Franka Rx': float,'Franka Ry': float,'Franka Rz': float,'Franka Rw': float})
+    web1gnd = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam1-05-Feb-2024--15-04-50.csv', delimiter=',',dtype={'Franka Rx': float,'Franka Ry': float,'Franka Rz': float,'Franka Rw': float})
+    web2gnd = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam2-05-Feb-2024--15-15-37.csv', delimiter=',',dtype={'Franka Rx': float,'Franka Ry': float,'Franka Rz': float,'Franka Rw': float})
 
     
     # run conversions and save to csv
-    fib1euler = convertdata(franka1)
-    fib1euler.to_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fib1euler.csv')    
-    fib2euler = convertdata(franka2)
-    fib2euler.to_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fib2euler.csv')
-    web1euler = convertdata(franka3)
-    web1euler.to_csv('data_collection_with_franka/B07LabTrials/final/webcam/web1euler.csv')
-    web2euler = convertdata(franka4)
-    web2euler.to_csv('data_collection_with_franka/B07LabTrials/final/webcam/web2euler.csv')
+    fib1euler = convertdata(fib1gnd)
+    # fib1euler.to_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fib1euler.csv')    
+    fib2euler = convertdata(fib2gnd)
+    # fib2euler.to_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fib2euler.csv')
+    web1euler = convertdata(web1gnd)
+    # web1euler.to_csv('data_collection_with_franka/B07LabTrials/final/webcam/web1euler.csv')
+    web2euler = convertdata(web2gnd)
+    # web2euler.to_csv('data_collection_with_franka/B07LabTrials/final/webcam/web2euler.csv')
     
+    # print(fib1euler)
+    # plots:
+    plt_euler(fib1euler.iloc[:,0],fib1euler.iloc[:,1],fib1euler.iloc[:,2])
+    plt_euler(fib2euler.iloc[:,0],fib2euler.iloc[:,1],fib2euler.iloc[:,2])
+    plt_euler(web1euler.iloc[:,0],web1euler.iloc[:,1],web1euler.iloc[:,2])
+    plt_euler(web2euler.iloc[:,0],web2euler.iloc[:,1],web2euler.iloc[:,2])
+    plt.show()
 if __name__ == "__main__":
     main() 
