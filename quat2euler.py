@@ -42,10 +42,10 @@ def quaternion_rotation_matrix(q0,q1,q2,q3):
             frame to a point in the global reference frame.
     """
     # Extract the values from Q
-    # q0 = Q[0]
-    # q1 = Q[1]
-    # q2 = Q[2]
-    # q3 = Q[3]
+    # q0 = Q[0] # w
+    # q1 = Q[1] # x
+    # q2 = Q[2] # y
+    # q3 = Q[3] # z
     
     # First row of the rotation matrix
     r00 = 2 * (q0 * q0 + q1 * q1) - 1
@@ -77,23 +77,24 @@ def quaternion_rotation_matrix(q0,q1,q2,q3):
 # transformation matrix apply
 def transform_franka_pillow(w,x,y,z):
     # trans_mat = np.array([[-1,0,0,t_x],[0,1,0,t_y],[0,0,-1,t_z],[0,0,0,1]])
-    trans_mat = np.array([[-1,0,0],[0,1,0],[0,0,-1],[0,0,0]]) # use later. 
-    rotation = R.from_matrix(trans_mat).as_quat()
+    trans_mat = np.array([[-1,0,0],[0,1,0],[0,0,-1]]) # use later. 
+    # rotation = R.from_matrix(trans_mat).as_quat()
     # [x',y',z'] = Rotation_matrix * [x,y,z] --- MATRIX MULTIPLICATION RULE
     # orig_euler = R.from_quat([w,x,y,z]).as_euler('xyz', degrees=False)
     
-    orig_euler = euler_from_quaternion(x,y,z,w)
+    quat2rot = quaternion_rotation_matrix(w,x,y,z)
+    # quat2rot = R.from_quat([w,x,y,z]).as_matrix()
+    # print(quat2rot)
+    transformed = np.matmul(quat2rot,trans_mat)
     
-    # apply rotation: --------
-    # p, q = np.array([0,x,y,z]), rotation
-    # # two step multiplication process 
-    # new_p = (1/q) * p * q
-    # new_p = q * new_p * (1/q)
-
-    # trans_euler = R.from_quat(new_p).as_euler('xyz', degrees=False)
+    trans_euler = R.from_matrix(transformed).as_euler('zxy', degrees=False)
     
-    return orig_euler[0],orig_euler[1],orig_euler[2]
+    # back2quat = R.from_euler('xyz', trans_euler, degrees=False).as_quat()
+    # orig_euler = euler_from_quaternion(x,y,z,w)
+    
+    return trans_euler[0],trans_euler[1],trans_euler[2]
 
+    # return back2quat[1], back2quat[2], back2quat[3]
 # convert data
 def convertdata(data): 
     # data = fib_gnd_truth_df1, fib_gnd_truth_df2, web_gnd_truth_df1, web_gnd_truth_df2 # one of these
@@ -106,21 +107,21 @@ def convertdata(data):
         
         # print(quat)
         # print(type(quat))
-        w = float(quat.iloc[11])
-        x = float(quat.iloc[8])
-        y = float(quat.iloc[9])
-        z = float(quat.iloc[10])
+        w = float(quat.loc['Franka Rw'])
+        x = float(quat.loc['Franka Rx'])
+        y = float(quat.loc['Franka Ry'])
+        z = float(quat.loc['Franka Rz'])
         
         # print('quat contents: ',w,x,y,z)
         # print(type(w),type(x),type(y),type(z))
         # trans_w,trans_x,trans_y,trans_z = transform_franka_pillow(w,x,y,z)
         # roll_x, pitch_y, yaw_z = euler_from_quaternion(trans_w,trans_x,trans_y,trans_z)
-        roll_x,pitch_y,yaw_z = euler_from_quaternion(x,y,z,w)
+        roll_x,pitch_y,yaw_z = transform_franka_pillow(w,x,y,z)
         
         # rotations switch axes: 
-        roll_x_new, pitch_y_new, yaw_z_new = pitch_y, roll_x, -yaw_z
+        # roll_x_new, pitch_y_new, yaw_z_new = pitch_y, roll_x, -yaw_z
         
-        var = pd.DataFrame({'roll_x':[roll_x_new],'pitch_y':[pitch_y_new],'yaw_z':[yaw_z_new]}).astype(float)
+        var = pd.DataFrame({'roll_x':[roll_x],'pitch_y':[pitch_y],'yaw_z':[yaw_z]}).astype(float)
         rotations = pd.concat([rotations,var],ignore_index=True)
         # print('quat contents: --')
         # print(var)
@@ -134,6 +135,7 @@ def plt_euler(rollX,pitchY,yawZ):
     plt.plot(pitchY)
     plt.plot(yawZ)
     plt.legend(['roll_x','pitch_y','yaw_z'])
+    plt.tight_layout()
     # plt.show()
 def main():
     

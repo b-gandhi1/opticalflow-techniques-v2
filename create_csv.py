@@ -51,9 +51,11 @@ fib_bd_bin_z = np.asarray([data['z_val'] for data in fib_bd_bin1_raw],dtype=floa
 fib_pd = pd.DataFrame({'bd_gray_x':fib_bd_gray_x,'bd_gray_y':fib_bd_gray_y,'lk_gray_x':fib_lk_gray_x,'lk_gray_y':fib_lk_gray_y,'z_brightness_gray':fib_bd_gray_z,'z_brightness_bin':fib_bd_bin_z},dtype=float)
 web_pd = pd.DataFrame({'bd_gray_x':web_bd_gray_x,'bd_gray_y':web_bd_gray_y,'lk_gray_x':web_lk_gray_x,'lk_gray_y':web_lk_gray_y,'z_brightness_gray':web_bd_gray_z,'z_brightness_bin':web_bd_bin_z},dtype=float)
 
-fib_pd.to_csv('OF_outputs/fib_pd.csv')
-web_pd.to_csv('OF_outputs/web_pd.csv')
+fib_pd.to_csv('OF_outputs/fib_pd.csv',header=True)
+print('fib_pd done')
+web_pd.to_csv('OF_outputs/web_pd.csv',header=True)
+print('web_pd done')
 ''' ERROR: 
 web_pd.to_csv('OF_outputs/web_pd.csv')
 /home/bhoomika/.local/lib/python3.8/site-packages/pandas/core/internals/blocks.py:2538: RuntimeWarning: invalid value encountered in cast
-    values = values.astype(str)'''
+    values = values.astype(str) '''

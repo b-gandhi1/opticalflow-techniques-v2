@@ -35,13 +35,13 @@ def statistics_calc(experimental_data, ground_truth):
     # corr_linear, _ = pearsonr(experimental_data, ground_truth,alternative='two-sided') # pearson correlation (linear). Low corr ~= 0. -0.5 < poor corr < 0.5. -1 < corr_range < 1. 
     # variables can be +vely or -vely linearly correlated. 
     corr_nonlin, _ = spearmanr(experimental_data, ground_truth,alternative='two-sided',nan_policy='propagate') # spearman correlation (nonlinear). High corr ~= 1. -1 < corr_range < 1. same as pearson.
-    r_sq = metrics.r2_score(ground_truth,experimental_data,force_finite=False)
+    # r_sq = metrics.r2_score(ground_truth,experimental_data,force_finite=False)
     corr_kendalltau = kendalltau(ground_truth,experimental_data)
     corr_weightedtau = weightedtau(ground_truth,experimental_data, rank=True, weigher=None, additive=False)
 
     # TEST THE COMMANDS ABOVE !!!! ----------
     # return corr_linear, corr_nonlin, r_sq, corr_kendalltau[0], corr_kendalltau[1], corr_weightedtau[0]
-    return corr_nonlin, r_sq, corr_kendalltau[0], corr_kendalltau[1], corr_weightedtau[0]
+    return corr_nonlin, corr_kendalltau[0], corr_kendalltau[1], corr_weightedtau[0]
 
 def plot_pressure(web_pressures, fib_pressures): 
     web_kpa = web_pressures.iloc[1:,0]
@@ -86,29 +86,29 @@ def linkingIO(gnd_truth_euler, fib_web_dat, t_z_gnd):
     
     # Trim to reduct length to 1/2
     half_len = int(0.5*len(z_val))
-    x_val = x_val[0:half_len]
+    x_val = x_val[12:half_len]
     # x_val_norm = x_val/np.linalg.norm(x_val)
     x_val_norm = normalize_vector(x_val)
-    y_val = y_val[0:half_len]
+    y_val = y_val[12:half_len]
     # y_val_norm = y_val/np.linalg.norm(y_val)
     y_val_norm = normalize_vector(y_val)
-    z_val = z_val[0:half_len]
+    z_val = z_val[12:half_len]
     # z_val_norm = z_val/np.linalg.norm(z_val)
     z_val_norm = normalize_vector(z_val)
     
     # print('XYZ shapes: ', np.shape(x_val),np.shape(y_val),np.shape(z_val))
     
-    euler_x = np.asarray(gnd_truth_euler.iloc[0:half_len,0])
+    euler_x = np.asarray(gnd_truth_euler.iloc[12:half_len,0])
     # euler_x_norm = euler_x/np.linalg.norm(euler_x)
     euler_x_norm = normalize_vector(euler_x)
-    euler_y = np.asarray(gnd_truth_euler.iloc[0:half_len,1])
+    euler_y = np.asarray(gnd_truth_euler.iloc[12:half_len,1])
     # euler_y_norm = euler_y/np.linalg.norm(euler_y)
     euler_y_norm = normalize_vector(euler_y)
-    euler_z = np.asarray(gnd_truth_euler.iloc[0:half_len,2])
+    euler_z = np.asarray(gnd_truth_euler.iloc[12:half_len,2])
     # euler_z_norm = euler_z/np.linalg.norm(euler_z)
     euler_z_norm = normalize_vector(euler_z)
 
-    t_z_gnd = np.asarray(t_z_gnd.iloc[0:half_len])
+    t_z_gnd = np.asarray(t_z_gnd.iloc[12:half_len])
     # t_z_gnd_norm = t_z_gnd/np.linalg.norm(t_z_gnd)
     t_z_gnd_norm = normalize_vector(t_z_gnd)
     
@@ -292,8 +292,9 @@ def main():
     
     # save statistics to a csv file
     # statistics_df = pd.DataFrame(statistics,columns=['Pearson Corr (lin)', 'Spearman Corr (non-lin)', 'R^2', 'Kendall Tau', 'kendall p-val', 'Weighted Tau'],dtype=float)
-    statistics_df = pd.DataFrame(statistics,columns=['Spearman Corr (non-lin)', 'R^2', 'Kendall Tau', 'kendall p-val', 'Weighted Tau'],dtype=float)
-    statistics_df.to_csv('OF_outputs/statistics.csv')
+    statistics_df = pd.DataFrame(statistics,columns=['Spearman Corr (non-lin)', 'Kendall Tau', 'kendall p-val', 'Weighted Tau'],dtype=float)
+    print(statistics_df)
+    statistics_df.to_csv('OF_outputs/statistics.csv',header=True)
     
 if __name__ == "__main__":
     main()
