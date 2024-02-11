@@ -81,7 +81,7 @@ def transform_franka_pillow(w,x,y,z):
     # rotation = R.from_matrix(trans_mat).as_quat()
     # [x',y',z'] = Rotation_matrix * [x,y,z] --- MATRIX MULTIPLICATION RULE
     # orig_euler = R.from_quat([w,x,y,z]).as_euler('xyz', degrees=False)
-    
+    orig_euler = euler_from_quaternion(x,y,z,w)
     quat2rot = quaternion_rotation_matrix(w,x,y,z)
     # quat2rot = R.from_quat([w,x,y,z]).as_matrix()
     # print(quat2rot)
