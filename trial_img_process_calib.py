@@ -34,10 +34,10 @@ def fibrescope_process(frame):
     # x,y,w,h = 350,280,200,110 # after resizing frame size. UPDATE THIS
     # x,y,w,h = 0,0,frame.shape[1],frame.shape[0] # no cropping, using all of it for now. 
     # rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
-    circle = cv.circle(mask_blank, (355,345), 100, (255,255,255), -1)
+    circle = cv.circle(mask_blank, (420,300), 100, (255,255,255), -1)
     masked = cv.bitwise_and(gray,gray,mask=circle)
     brightened = cv.addWeighted(masked, CONTRAST, np.zeros(masked.shape, masked.dtype), 0, BRIGHTNESS)     
-    binary = cv.threshold(brightened,57,255,cv.THRESH_BINARY)[1] # might remove: + cv.thresh_otsu
+    binary = cv.threshold(brightened,55,255,cv.THRESH_BINARY)[1] # might remove: + cv.thresh_otsu
     # eroded = cv.erode(binary,np.ones((4,3),np.uint8))
     morph_open = cv.morphologyEx(binary,cv.MORPH_OPEN,kernel)
     morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
@@ -123,7 +123,7 @@ def webcam_process(frame):
     x,y,w,h = 0,60,635,340 # (x,y) = top left params
     rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
     masked = cv.bitwise_and(gray,gray,mask=rect)
-    binary = cv.threshold(masked,50,255,cv.THRESH_BINARY)[1] # might remove: + cv.thresh_otsu
+    binary = cv.threshold(masked,231,255,cv.THRESH_BINARY)[1] # might remove: + cv.thresh_otsu
     # same threshold does not work for static image and video both. Static img thresh = 50, video thresh = 140. 
     morph_open = cv.morphologyEx(binary,cv.MORPH_OPEN,kernel)
     morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
