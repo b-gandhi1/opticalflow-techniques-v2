@@ -3,24 +3,24 @@ import pandas as pd
 import numpy as np
 
 # load data from cams
-web_bd_gray1_raw = pickle.load(open("OF_outputs/data4_feb2024/BD_gray_web1_2024-02-06_17-14-06.pkl", "rb"))
+web_bd_gray1_raw = pickle.load(open("OF_outputs/data4_feb2024/BD_gray_web2_2024-02-06_17-15-22.pkl", "rb"))
 # web_bd_gray2_raw = pickle.load(open("OF_outputs/data4_feb2024/BD_gray_web2_2024-02-06_17-15-22.pkl", "rb"))
-fib_bd_gray1_raw = pickle.load(open("OF_outputs/data4_feb2024/BD_gray_fib1_2024-02-06_17-17-16.pkl", "rb"))  
+fib_bd_gray1_raw = pickle.load(open("OF_outputs/data4_feb2024/BD_gray_fib2_2024-02-06_17-36-31.pkl", "rb"))  
 # fib_bd_gray2_raw = pickle.load(open("OF_outputs/data4_feb2024/BD_gray_fib2_2024-02-06_17-36-31.pkl", "rb"))
 
-web_bd_bin1_raw = pickle.load(open("OF_outputs/data4_feb2024/BD_binary_web1_2024-02-06_18-26-16.pkl", "rb"))
+web_bd_bin1_raw = pickle.load(open("OF_outputs/data4_feb2024/BD_binary_web2_2024-02-06_18-28-22.pkl", "rb"))
 # web_bd_bin2_raw = pickle.load(open("OF_outputs/data4_feb2024/BD_binary_web2_2024-02-06_18-28-22.pkl", "rb"))
-fib_bd_bin1_raw = pickle.load(open("OF_outputs/data4_feb2024/BD_binary_fib1_2024-02-06_17-40-26.pkl", "rb"))
+fib_bd_bin1_raw = pickle.load(open("OF_outputs/data4_feb2024/BD_binary_fib2_2024-02-06_17-42-17.pkl", "rb"))
 # fib_bd_bin2_raw = pickle.load(open("OF_outputs/data4_feb2024/BD_binary_fib2_2024-02-06_17-42-17.pkl", "rb"))
 
-web_lk_gray1_raw = pickle.load(open("OF_outputs/data4_feb2024/LK_gray_web1_2024-02-06_17-14-06.pkl", "rb"))
+web_lk_gray1_raw = pickle.load(open("OF_outputs/data4_feb2024/LK_gray_web2_2024-02-06_17-15-22.pkl", "rb"))
 # web_lk_gray2_raw = pickle.load(open("OF_outputs/data4_feb2024/LK_gray_web2_2024-02-06_17-15-22.pkl", "rb"))
-fib_lk_gray1_raw = pickle.load(open("OF_outputs/data4_feb2024/LK_gray_fib1_2024-02-06_17-17-16.pkl", "rb"))
+fib_lk_gray1_raw = pickle.load(open("OF_outputs/data4_feb2024/LK_gray_fib2_2024-02-06_17-36-31.pkl", "rb"))
 # fib_lk_gray2_raw = pickle.load(open("OF_outputs/data4_feb2024/LK_gray_fib2_2024-02-06_17-36-31.pkl", "rb"))
 
-web_lk_bin1_raw = pickle.load(open("OF_outputs/data4_feb2024/LK_binary_web1_2024-02-06_18-26-16.pkl", "rb"))
+web_lk_bin1_raw = pickle.load(open("OF_outputs/data4_feb2024/LK_binary_web2_2024-02-06_18-28-22.pkl", "rb"))
 # web_lk_bin2_raw = pickle.load(open("OF_outputs/data4_feb2024/LK_binary_web2_2024-02-06_18-28-22.pkl", "rb"))
-fib_lk_bin1_raw = pickle.load(open("OF_outputs/data4_feb2024/LK_binary_fib1_2024-02-06_17-40-26.pkl", "rb"))
+fib_lk_bin1_raw = pickle.load(open("OF_outputs/data4_feb2024/LK_binary_fib2_2024-02-06_17-42-17.pkl", "rb"))
 # fib_lk_bin2_raw = pickle.load(open("OF_outputs/data4_feb2024/LK_binary_fib2_2024-02-06_17-42-17.pkl", "rb"))
     
 # extract 1D xyz vars

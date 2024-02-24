@@ -103,7 +103,7 @@ def main():
     web1_Tz_gnd = web1_Tz_gnd.iloc[10:int(0.5*len(web1_Tz_gnd)),:]*(-1) # trim half, add 10 to remove zeros
     web2_Tz_gnd = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/transTz/webcam2-14-Feb-2024--20-04-07.csv', delimiter=',', usecols=['Franka Tz'], dtype={'Franka Tz': float})
     web2_Tz_gnd = web2_Tz_gnd.iloc[10:int(0.5*len(web2_Tz_gnd)),:]*(-1) # trim half
-    fib1_Tz_gnd = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/transTz/fibrescope1-14-Feb-2024--19-23-47.csv', delimiter=',', usecols=['Franka Tz'], dtype={'Franka Tz': float})
+    fib1_Tz_gnd = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/transTz/fibrescope1.csv', delimiter=',', usecols=['Franka Tz'], dtype={'Franka Tz': float})
     fib1_Tz_gnd = fib1_Tz_gnd.iloc[10:int(0.5*len(fib1_Tz_gnd)),:]*(-1)
     fib2_Tz_gnd = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/transTz/fibrescope2-14-Feb-2024--19-26-32.csv', delimiter=',', usecols=['Franka Tz'], dtype={'Franka Tz': float})
     fib2_Tz_gnd = fib2_Tz_gnd.iloc[10+int(0.5*len(fib2_Tz_gnd)):int(len(fib2_Tz_gnd)),:]*(-1)
@@ -143,6 +143,10 @@ def main():
     plt.legend(['web1','web2','fib1','fib2','GND truth'])
     plt.tight_layout()
     plt.show()
+    
+    # Tz outputs save: 
+    pd_Tz = pd.DataFrame({'web1': web1Tz,'web2': web2Tz,'fib1': fib1Tz,'fib2': fib2Tz},dtype=float)
+    pd_Tz.to_csv('OF_outputs/Tz_raw.csv',header=True)
     
     # statistics
     
