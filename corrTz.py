@@ -134,7 +134,7 @@ def main():
     # plot: 
     t = np.linspace(0,30,len(web1Tz))
     print('t size',len(t))
-    plt.figure()
+    plt.figure(1)
     plt.plot(t,normalize_vector(web1Tz))
     plt.plot(t,normalize_vector(web2Tz))
     plt.plot(t,normalize_vector(fib1Tz))
@@ -142,11 +142,25 @@ def main():
     plt.plot(t,normalize_vector(web1_Tz_gnd))
     plt.legend(['web1','web2','fib1','fib2','GND truth'])
     plt.tight_layout()
-    plt.show()
+    # plt.show()
     
     # Tz outputs save: 
     pd_Tz = pd.DataFrame({'web1': web1Tz,'web2': web2Tz,'fib1': fib1Tz,'fib2': fib2Tz},dtype=float)
     pd_Tz.to_csv('OF_outputs/Tz_raw.csv',header=True)
+    
+    
+    # sample plot: grayscale fibrescope: 
+    # plt.figure(2)
+    # plt.plot(t,normalize_vector(fib1Tz))
+    # plt.plot(t,normalize_vector(fib1_Tz_gnd))
+    # plt.legend(['Grayscale fibrescope','Ground truth'])
+    # plt.tight_layout()
+    # plt.show()
+    
+    # save raw data: 
+    
+    # pd_Tz = pd.DataFrame({'web1': normalize_vector(web1Tz), 'web1_GND': normalize_vector(web1_Tz_gnd.values),'web2': normalize_vector(web2Tz),'web2_GND': normalize_vector(web2_Tz_gnd.values),'fib1': normalize_vector(fib1Tz),'fib1_GND': normalize_vector(fib1_Tz_gnd.values),'fib2': normalize_vector(fib2Tz),'fib2_GND': normalize_vector(fib2_Tz_gnd.values)},dtype=float)
+    # pd_Tz.to_csv('OF_outputs/Tz_normalised_movement2.csv',header=True)
     
     # statistics
     

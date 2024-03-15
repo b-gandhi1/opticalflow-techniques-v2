@@ -231,62 +231,62 @@ def main():
     
     # outputs for linking IO plots: 
     # webcam: 
-    plt.figure(1)
-    linkingIO(web_df_euler1,web_bd_gray1_raw,web_z_1) # for BD_gray
-    plt.suptitle('Sample 1: Grayscale Webcam + Blob Detection')
-    plt.figure(2)
-    linkingIO(web_df_euler2,web_bd_gray2_raw,web_z_2)
-    plt.suptitle('Sample 2: Grayscale Webcam + Blob Detection')
+    # plt.figure(1)
+    # linkingIO(web_df_euler1,web_bd_gray1_raw,web_z_1) # for BD_gray
+    # plt.suptitle('Sample 1: Grayscale Webcam + Blob Detection')
+    # plt.figure(2)
+    # linkingIO(web_df_euler2,web_bd_gray2_raw,web_z_2)
+    # plt.suptitle('Sample 2: Grayscale Webcam + Blob Detection')
     
-    plt.figure(3)
-    linkingIO(web_df_euler1,web_bd_bin1_raw,web_z_1) # for BD_binary
-    plt.suptitle('Sample 1: Binary Webcam + Blob Detection')
-    plt.figure(4)
-    linkingIO(web_df_euler2,web_bd_bin2_raw,web_z_2)
-    plt.suptitle('Sample 2: Binary Webcam + Blob Detection')
+    # plt.figure(3)
+    # linkingIO(web_df_euler1,web_bd_bin1_raw,web_z_1) # for BD_binary
+    # plt.suptitle('Sample 1: Binary Webcam + Blob Detection')
+    # plt.figure(4)
+    # linkingIO(web_df_euler2,web_bd_bin2_raw,web_z_2)
+    # plt.suptitle('Sample 2: Binary Webcam + Blob Detection')
     
-    plt.figure(5)
-    linkingIO(web_df_euler1,web_lk_gray1_raw,web_z_1) # for LK_gray
-    plt.suptitle('Sample 1: Grayscale Webcam + Optical Flow')
-    plt.figure(6)
-    linkingIO(web_df_euler2,web_lk_gray2_raw,web_z_2)
-    plt.suptitle('Sample 2: Grayscale Webcam + Optical Flow')
+    # plt.figure(5)
+    # linkingIO(web_df_euler1,web_lk_gray1_raw,web_z_1) # for LK_gray
+    # plt.suptitle('Sample 1: Grayscale Webcam + Optical Flow')
+    # plt.figure(6)
+    # linkingIO(web_df_euler2,web_lk_gray2_raw,web_z_2)
+    # plt.suptitle('Sample 2: Grayscale Webcam + Optical Flow')
     
-    plt.figure(7)
-    linkingIO(web_df_euler1,web_lk_bin1_raw,web_z_1) # for LK_binary
-    plt.suptitle('Sample 1: Binary Webcam + Optical Flow')
-    plt.figure(8)
-    linkingIO(web_df_euler2,web_lk_bin2_raw,web_z_2)
-    plt.suptitle('Sample 2: Binary Webcam + Optical Flow')
+    # plt.figure(7)
+    # linkingIO(web_df_euler1,web_lk_bin1_raw,web_z_1) # for LK_binary
+    # plt.suptitle('Sample 1: Binary Webcam + Optical Flow')
+    # plt.figure(8)
+    # linkingIO(web_df_euler2,web_lk_bin2_raw,web_z_2)
+    # plt.suptitle('Sample 2: Binary Webcam + Optical Flow')
     
-    # fibrescope:
-    plt.figure(9)
-    linkingIO(fib_df_euler1,fib_bd_gray1_raw,fib_z_1) # for BD_gray
-    plt.suptitle('Sample 1: Grayscale Fibrescope + Blob Detection')
-    plt.figure(10)
-    linkingIO(fib_df_euler2,fib_bd_gray2_raw,fib_z_2)
-    plt.suptitle('Sample 2: Grayscale Fibrescope + Blob Detection')
+    # # fibrescope:
+    # plt.figure(9)
+    # linkingIO(fib_df_euler1,fib_bd_gray1_raw,fib_z_1) # for BD_gray
+    # plt.suptitle('Sample 1: Grayscale Fibrescope + Blob Detection')
+    # plt.figure(10)
+    # linkingIO(fib_df_euler2,fib_bd_gray2_raw,fib_z_2)
+    # plt.suptitle('Sample 2: Grayscale Fibrescope + Blob Detection')
     
-    plt.figure(11)
-    linkingIO(fib_df_euler1,fib_bd_bin1_raw,fib_z_1) # for BD_binary
-    plt.suptitle('Sample 1: Binary Fibrescope + Blob Detection')
-    plt.figure(12)
-    linkingIO(fib_df_euler2,fib_bd_bin2_raw,fib_z_2)
-    plt.suptitle('Sample 2: Binary Fibrescope + Blob Detection')
+    # plt.figure(11)
+    # linkingIO(fib_df_euler1,fib_bd_bin1_raw,fib_z_1) # for BD_binary
+    # plt.suptitle('Sample 1: Binary Fibrescope + Blob Detection')
+    # plt.figure(12)
+    # linkingIO(fib_df_euler2,fib_bd_bin2_raw,fib_z_2)
+    # plt.suptitle('Sample 2: Binary Fibrescope + Blob Detection')
     
-    plt.figure(13)
-    linkingIO(fib_df_euler1,fib_lk_gray1_raw,fib_z_1) # for LK_gray
-    plt.suptitle('Sample 1: Grayscale Fibrescope + Optical Flow')
-    plt.figure(14)
-    linkingIO(fib_df_euler2,fib_lk_gray2_raw,fib_z_2)
-    plt.suptitle('Sample 2: Grayscale Fibrescope + Optical Flow')
+    # plt.figure(13)
+    # linkingIO(fib_df_euler1,fib_lk_gray1_raw,fib_z_1) # for LK_gray
+    # plt.suptitle('Sample 1: Grayscale Fibrescope + Optical Flow')
+    # plt.figure(14)
+    # linkingIO(fib_df_euler2,fib_lk_gray2_raw,fib_z_2)
+    # plt.suptitle('Sample 2: Grayscale Fibrescope + Optical Flow')
     
-    plt.figure(15)
-    linkingIO(fib_df_euler1,fib_lk_bin1_raw,fib_z_1) # for LK_binary
-    plt.suptitle('Sample 1: Binary Fibrescope + Optical Flow')
-    plt.figure(16)
-    linkingIO(fib_df_euler2,fib_lk_bin2_raw,fib_z_2)
-    plt.suptitle('Sample 2: Binary Fibrescope + Optical Flow')
+    # plt.figure(15)
+    # linkingIO(fib_df_euler1,fib_lk_bin1_raw,fib_z_1) # for LK_binary
+    # plt.suptitle('Sample 1: Binary Fibrescope + Optical Flow')
+    # plt.figure(16)
+    # linkingIO(fib_df_euler2,fib_lk_bin2_raw,fib_z_2)
+    # plt.suptitle('Sample 2: Binary Fibrescope + Optical Flow')
     
     plt.show()
     
