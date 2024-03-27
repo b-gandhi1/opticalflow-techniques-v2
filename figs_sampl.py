@@ -119,6 +119,100 @@ def OF_LK(frame,ref_frame,img_process): # Lucas-Kanade, sparse optical flow, loc
     img = cv.add(frame_filt, mask_OF)
     # cv.imshow('Optical Flow - Lucas-Kanade', img)        
     return img, p1[..., 0], p1[..., 1]
+
+def LK_vid(cap, ref_frame,img_process):
+
+    cap.set(cv.CAP_PROP_POS_FRAMES, 0) # reset to frame 0
+    
+    # LK OF parameters: 
+    if img_process == 'w':
+        print('LK: Webcam')
+        # img_process_func = webcam_process
+        feature_params = dict( maxCorners = 700, 
+                                qualityLevel = 0.15, # between 0 and 1. Lower numbers = higher quality level. 
+                                minDistance = 25.0, # distance in pixels between points being monitored. 
+                                blockSize = 5,
+                                useHarrisDetector = False, 
+                                k = 0.04 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense. 
+        lk_params = dict( winSize  = (45, 45),
+                    maxLevel = 2,
+                    criteria = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
+        filename = 'figs_sampl/LK_webcam.mp4'
+    
+    elif img_process == 'f':
+        print('LK: Fibrescope')
+        # img_process_func = fibrescope_process
+        feature_params = dict( maxCorners = 100, 
+                                qualityLevel = 0.01, # between 0 and 1. Lower numbers = higher quality level. 
+                                minDistance = 5.0, # distance in pixels between points being monitored. 
+                                blockSize = 3,
+                                useHarrisDetector = False, # Shi-Tomasi better for corner detection than Harris for fibrescope. 
+                                k = 0.04 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense.
+        lk_params = dict( winSize = (45, 45),
+                    maxLevel = 2,
+                    criteria = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
+        filename = 'figs_sampl/LK_fibrescope.mp4'
+    
+    else:
+        print("ERROR: Please enter a valid argument for imaging method used.")
+        exit()
+        
+    # Parameters for lucas kanade optical flow
+    # lk_params = dict( winSize  = (45, 45),
+    #                 maxLevel = 2,
+    #                 criteria = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
+    
+    color = np.random.randint(0, 255, (500, 3)) # Create some random colors 
+    
+    p0 = cv.goodFeaturesToTrack(ref_frame, mask = None, **feature_params) # Shi-Tomasi corner detection
+    # p0 = cv.cornerHarris(ref_frame, 10,10,0.3) # Harris corner detection, ERROR. figure out how to use this!! 
+    # cv.imshow('ref frame temp',ref_frame)
+    mask_OF = np.zeros_like(ref_frame)
+
+    p1,st,err = None,None,None
+    
+    # video object create: 
+    out = cv.VideoWriter(filename,cv.VideoWriter_fourcc(*'mp4v'),10,(ref_frame.shape[1],ref_frame.shape[0]),True)
+    # if img_process == 'w':
+    #     frame_filt = webcam_process(frame)
+    # elif img_process == 'f':
+    #     frame_filt = fibrescope_process(frame, fib_rot_centre)
+    # frame_filt = img_process_func(frame) # was: (cap,frame)
+    # cv.imshow('FILTERED + CROPPED',frame_filt)
+    while True: 
+        ret, frame = cap.read()
+        if not ret: break
+        
+        if img_process == 'w':
+            frame_filt = webcam_process(frame)
+        elif img_process == 'f':
+            frame_filt = fibrescope_process(frame, fib_rot_centre)
+        else: print("ERROR: Invalid image process method for Lukas-Kanade.")
+        # p1,st,err = cv.calcOpticalFlowPyrLK(ref_frame, frame_filt, p0, None, None, None,**lk_params)
+        p1,st,err = cv.calcOpticalFlowPyrLK(ref_frame, frame_filt, p0, p1, st, err,**lk_params)
+        magnitude, angle = cv.cartToPolar(p1[..., 0], p1[..., 1])
+        if p1 is not None:
+            good_new = p1[st==1]
+            good_old = p0[st==1]
+        
+        for i, (new, old) in enumerate(zip(good_new, good_old)):
+            a, b = new.ravel()
+            c, d = old.ravel()
+            mask_OF = cv.line(mask_OF, (int(a), int(b)), (int(c), int(d)), color[i].tolist(), 2)
+            frame_filt = cv.circle(frame_filt, (int(a), int(b)), 5, color[i].tolist(), -1)
+        img = cv.add(frame_filt, mask_OF)
+
+        cv.imshow('frame',img)
+        
+        img_RGB = cv.cvtColor(img, cv.COLOR_GRAY2RGB)
+        out.write(img_RGB) # save video in RBG
+        
+        if cv.waitKey(10) & 0xFF == ord('q'):
+            print('Quitting...')
+            break
+    cap.release()
+    out.release()
+    # cv.destroyAllWindows()
     
 def main():
     fib1_trans = cv.VideoCapture('data_collection_with_franka/B07LabTrials/final/fibrescope/transTz/fibrescope1-14-Feb-2024--19-22-46.mp4')
@@ -136,18 +230,18 @@ def main():
 
     if not ret1 or not ret2 or not ret3 or not ret4: print('ERROR: Cannot get frame.')
     
-    # get mid/down frame: 
+    # get mid/down frame (aka reference frames): (mid for rotation, down for translation)
     fib_mid = fibrescope_process(fib_mid, fib_rot_centre)
     fib_down = fibrescope_process(fib_down, fib_trans_centre)
     web_mid = webcam_process(web_mid)
     web_down = webcam_process(web_down)
     
-    # show frames and save
-    cv.imshow('fib rot ref',fib_mid)
-    cv.imshow('fib trans ref',fib_down)
-    cv.imshow('web rot ref',web_mid)
-    cv.imshow('web trans ref',web_down)
-    cv.waitKey(0)
+    # show frames 
+    # cv.imshow('fib rot ref',fib_mid)
+    # cv.imshow('fib trans ref',fib_down)
+    # cv.imshow('web rot ref',web_mid)
+    # cv.imshow('web trans ref',web_down)
+    # cv.waitKey(0)
     
     # get left frame: 
     left = 70
@@ -175,47 +269,25 @@ def main():
     # apply OF to all of them (ref_rot = mid, ref_trans = down):
     fib_left_img, fib_left_p1_x, fib_left_p1_y = OF_LK(fib_left, fib_mid, 'f')
     cv.imshow('fib left OF', fib_left_img)
-    cv.imwrite('figs_sampl/fib_left_OF.png', fib_left_img)
+    # cv.imwrite('figs_sampl/fib_left_OF.png', fib_left_img)
     fib_right_img, fib_right_p1_x, fib_right_p1_y = OF_LK(fib_right, fib_mid, 'f')
     cv.imshow('fib right OF', fib_right_img)
-    cv.imwrite('figs_sampl/fib_right_OF.png', fib_right_img)
+    # cv.imwrite('figs_sampl/fib_right_OF.png', fib_right_img)
 
     web_left_img, web_left_p1_x, web_left_p1_y = OF_LK(web_left, web_mid, 'w')
     cv.imshow('web left OF', web_left_img)
-    cv.imwrite('figs_sampl/web_left_OF.png', web_left_img)
+    # cv.imwrite('figs_sampl/web_left_OF.png', web_left_img)
     web_right_img, web_right_p1_x, web_right_p1_y = OF_LK(web_right, web_mid, 'w')
     cv.imshow('web right OF', web_right_img)
-    cv.imwrite('figs_sampl/web_right_OF.png', web_right_img)
+    # cv.imwrite('figs_sampl/web_right_OF.png', web_right_img)
 
     cv.waitKey(0)
     
-    # save OF figures: 
-    
-    # quiver plots: plt.quiver(x,y,u,v) -> u = p1[...,0], v = p1[...,1]
-    # fib_x, fib_y = np.meshgrid(np.arange(np.shape(fib_mid)[1]), np.arange(np.shape(fib_mid)[0]))
-    # # fib_left_p1_x, fib_left_p1_y = np.meshgrid(fib_left_p1_x, fib_left_p1_y)
-    # # fib_right_p1_x, fib_right_p1_y = np.meshgrid(fib_right_p1_x, fib_right_p1_y)
-    # web_x, web_y = np.meshgrid(np.arange(np.shape(web_mid)[1]), np.arange(np.shape(web_mid)[0]))
-    # # web_left_p1_x, web_left_p1_y = np.meshgrid(web_left_p1_x, web_left_p1_y)
-    # # web_right_p1_x, web_right_p1_y = np.meshgrid(web_right_p1_x, web_right_p1_y)
-    # print('fib sizes: ', np.shape(fib_x), np.shape(fib_y), np.shape(fib_left_p1_x), np.shape(fib_left_p1_y))
-    # print('web sizes: ', np.shape(web_x), np.shape(web_y), np.shape(web_left_p1_x), np.shape(web_left_p1_y))
-    # plt.figure('fibrescope left')
-    # plt.quiver(fib_left_p1_x, fib_left_p1_y)
-    # plt.tight_layout()
-    # plt.figure('fibrescope right')
-    # plt.quiver(fib_right_p1_x, fib_right_p1_y)
-    # plt.tight_layout()
-    # plt.figure('webcam left')
-    # plt.quiver(web_left_p1_x, web_left_p1_y)
-    # plt.tight_layout()
-    # plt.figure('webcam right')
-    # plt.quiver(web_right_p1_x, web_right_p1_y)
-    # plt.tight_layout()
-    
-    # plt.show()
-    
-    # save quiver plots: 
+    # call LK_vid function:
+    # fib1_rot.set(cv.CAP_PROP_POS_FRAMES, 0)
+    # web1_rot.set(cv.CAP_PROP_POS_FRAMES, 0)
+    LK_vid(fib1_rot, fib_mid, 'f')
+    LK_vid(web1_rot, web_mid, 'w')
 
 if __name__ == '__main__':
     main()
