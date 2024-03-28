@@ -223,7 +223,7 @@ def main():
     # get mid/down frame for all: 
     ret1, fib_mid = fib1_rot.read()
     ret2, fib_down = fib1_trans.read()
-    web1_rot.set(cv.CAP_PROP_POS_FRAMES, 2) 
+    web1_rot.set(cv.CAP_PROP_POS_FRAMES, 13) 
     ret3, web_mid = web1_rot.read()
     web1_trans.set(cv.CAP_PROP_POS_FRAMES, 2)
     ret4, web_down = web1_trans.read()

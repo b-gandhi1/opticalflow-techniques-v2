@@ -65,7 +65,7 @@ def webcam_process(frame):
     morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
     dilated = cv.dilate(morph_close,kernel)
 
-    return dilated 
+    return masked 
 
 def z_brightness(frame): # use this to get average brightness of each frame
     norm_frame = frame/np.max(frame)
@@ -335,7 +335,8 @@ def main(img_process_selector,loadpath):
     ref_frame = img_process(ref_frame) # was: (cap,ref_frame)
     cv.imshow('reference frame after filtering',ref_frame)
     # filenames to save output data: 
-    savefilename_LK = os.path.join('OF_outputs/data4_feb2024','LK_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    # savefilename_LK = os.path.join('OF_outputs/data4_feb2024','LK_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    savefilename_LK = 'OF_outputs/trial.pkl'
     # savefilename_GF = os.path.join('OF_outputs','GF_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
     savefilename_BD = os.path.join('OF_outputs/data4_feb2024','BD_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
 
@@ -370,7 +371,7 @@ def main(img_process_selector,loadpath):
         cap.set(cv.CAP_PROP_POS_FRAMES, 0) # reset back. 
         
         # OF_GF(cap,ref_frame,img_process,savefilename_GF,mask_GF) # keeps gettig killed, due to RAM and CPU being saturated.
-        blobdetect(cap,img_process,savefilename_BD)
+        # blobdetect(cap,img_process,savefilename_BD)
 
     except KeyboardInterrupt:
         print('*****ERROR: Manually interrupted*****')
