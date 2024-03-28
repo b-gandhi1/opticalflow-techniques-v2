@@ -51,6 +51,7 @@ def webcam_process(frame):
     return masked
 
 def OF_LK(frame,ref_frame,img_process): # Lucas-Kanade, sparse optical flow, local solution
+    img, mask_OF = None, None
         
     # LK OF parameters: 
     if img_process == 'w':
@@ -114,8 +115,9 @@ def OF_LK(frame,ref_frame,img_process): # Lucas-Kanade, sparse optical flow, loc
     for i, (new, old) in enumerate(zip(good_new, good_old)):
         a, b = new.ravel()
         c, d = old.ravel()
-        mask_OF = cv.line(mask_OF, (int(a), int(b)), (int(c), int(d)), color[i].tolist(), 2)
-        frame_filt = cv.circle(frame_filt, (int(a), int(b)), 5, color[i].tolist(), -1)
+        # mask_OF = cv.line(mask_OF, (int(a), int(b)), (int(c), int(d)), color[i].tolist(), 2)
+        mask_OF = cv.arrowedLine(mask_OF, (int(c), int(d)), (int(a), int(b)), (255,255,255), 2, tipLength=0.5)
+        # frame_filt = cv.circle(frame_filt, (int(a), int(b)), 5, color[i].tolist(), -1)
     img = cv.add(frame_filt, mask_OF)
     # cv.imshow('Optical Flow - Lucas-Kanade', img)        
     return img, p1[..., 0], p1[..., 1]
@@ -198,14 +200,17 @@ def LK_vid(cap, ref_frame,img_process):
         for i, (new, old) in enumerate(zip(good_new, good_old)):
             a, b = new.ravel()
             c, d = old.ravel()
-            mask_OF = cv.line(mask_OF, (int(a), int(b)), (int(c), int(d)), color[i].tolist(), 2)
-            frame_filt = cv.circle(frame_filt, (int(a), int(b)), 5, color[i].tolist(), -1)
-        img = cv.add(frame_filt, mask_OF)
 
-        cv.imshow('frame',img)
-        
+            mask_OF = cv.arrowedLine(mask_OF, (int(c), int(d)), (int(a), int(b)), (255,255,255), 2, tipLength=0.5)
+            # mask_OF = cv.line(mask_OF, (int(a), int(b)), (int(c), int(d)), color[i].tolist(), 2)
+            # frame_filt = cv.circle(frame_filt, (int(a), int(b)), 5, color[i].tolist(), -1)
+        img = cv.add(frame_filt, mask_OF)        
         img_RGB = cv.cvtColor(img, cv.COLOR_GRAY2RGB)
+        cv.imshow('frame',img_RGB)
         out.write(img_RGB) # save video in RBG
+        
+        # clear lines for next frame:
+        mask_OF = np.zeros_like(mask_OF) # clear lines for next frame
         
         if cv.waitKey(10) & 0xFF == ord('q'):
             print('Quitting...')
@@ -223,7 +228,7 @@ def main():
     # get mid/down frame for all: 
     ret1, fib_mid = fib1_rot.read()
     ret2, fib_down = fib1_trans.read()
-    web1_rot.set(cv.CAP_PROP_POS_FRAMES, 13) 
+    web1_rot.set(cv.CAP_PROP_POS_FRAMES, 40) 
     ret3, web_mid = web1_rot.read()
     web1_trans.set(cv.CAP_PROP_POS_FRAMES, 2)
     ret4, web_down = web1_trans.read()
@@ -247,14 +252,16 @@ def main():
     left = 70
     fib1_rot.set(cv.CAP_PROP_POS_FRAMES, left)
     fib_left = fibrescope_process(fib1_rot.read()[1], fib_rot_centre)
-    web1_rot.set(cv.CAP_PROP_POS_FRAMES, left)
+    web_left = 160
+    web1_rot.set(cv.CAP_PROP_POS_FRAMES, web_left)
     web_left = webcam_process(web1_rot.read()[1])
     
     # get right frame:
     right = 120
     fib1_rot.set(cv.CAP_PROP_POS_FRAMES, right)
     fib_right = fibrescope_process(fib1_rot.read()[1], fib_rot_centre)
-    web1_rot.set(cv.CAP_PROP_POS_FRAMES, right)
+    web_right = 210
+    web1_rot.set(cv.CAP_PROP_POS_FRAMES, web_right)
     web_right = webcam_process(web1_rot.read()[1])
     
     # get up frame: LK WAS NOT USED FOR TRANSLATION... 
@@ -269,17 +276,17 @@ def main():
     # apply OF to all of them (ref_rot = mid, ref_trans = down):
     fib_left_img, fib_left_p1_x, fib_left_p1_y = OF_LK(fib_left, fib_mid, 'f')
     cv.imshow('fib left OF', fib_left_img)
-    # cv.imwrite('figs_sampl/fib_left_OF.png', fib_left_img)
+    cv.imwrite('figs_sampl/fib_left_OF.png', fib_left_img)
     fib_right_img, fib_right_p1_x, fib_right_p1_y = OF_LK(fib_right, fib_mid, 'f')
     cv.imshow('fib right OF', fib_right_img)
-    # cv.imwrite('figs_sampl/fib_right_OF.png', fib_right_img)
+    cv.imwrite('figs_sampl/fib_right_OF.png', fib_right_img)
 
     web_left_img, web_left_p1_x, web_left_p1_y = OF_LK(web_left, web_mid, 'w')
     cv.imshow('web left OF', web_left_img)
-    # cv.imwrite('figs_sampl/web_left_OF.png', web_left_img)
+    cv.imwrite('figs_sampl/web_left_OF.png', web_left_img)
     web_right_img, web_right_p1_x, web_right_p1_y = OF_LK(web_right, web_mid, 'w')
     cv.imshow('web right OF', web_right_img)
-    # cv.imwrite('figs_sampl/web_right_OF.png', web_right_img)
+    cv.imwrite('figs_sampl/web_right_OF.png', web_right_img)
 
     cv.waitKey(0)
     
