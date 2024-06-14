@@ -29,7 +29,7 @@ def fibrescope_process(frame):
     mask_blank = np.zeros_like(gray,dtype='uint8') # ,dtype='uint8'
     # x,y,w,h = 350,280,200,110 # after resizing frame size. 
     # rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
-    circle = cv.circle(mask_blank, (355,345), 100, (255,255,255), -1)
+    circle = cv.circle(mask_blank, (410,260), 100, (255,255,255), -1)
     masked = cv.bitwise_and(gray,gray,mask=circle)
     brightened = cv.addWeighted(masked, CONTRAST, np.zeros(masked.shape, masked.dtype), 0, BRIGHTNESS)     
     binary = cv.threshold(brightened,57,255,cv.THRESH_BINARY)[1] # might remove: + cv.thresh_otsu
@@ -37,7 +37,7 @@ def fibrescope_process(frame):
     morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
     dilated = cv.dilate(morph_close,kernel)
 
-    return dilated
+    return brightened
 
 # def fish_undistort(ref_frame,checkboard):
 #     # checkboard = imread()
@@ -314,7 +314,9 @@ def main(img_process_selector,loadpath):
     if img_process_selector == 'w':
         cap.set(cv.CAP_PROP_POS_FRAMES, 13) # since first ref frame is messy for some reason.. does not cover all pins in binary verison. 
     ret, ref_frame = cap.read()
-    if not ret: print('ERROR: Cannot get frame.')
+    if not ret: 
+        print('STATUS: End of frames OR Cannot get frame.') 
+        pass
     cap.set(cv.CAP_PROP_POS_FRAMES, 0) # reset back. 
     
     # width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
@@ -335,8 +337,8 @@ def main(img_process_selector,loadpath):
     ref_frame = img_process(ref_frame) # was: (cap,ref_frame)
     cv.imshow('reference frame after filtering',ref_frame)
     # filenames to save output data: 
-    # savefilename_LK = os.path.join('OF_outputs/data4_feb2024','LK_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
-    savefilename_LK = 'OF_outputs/trial.pkl'
+    savefilename_LK = os.path.join('imu-fusion-outputs','roll8_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    # savefilename_LK = 'OF_outputs/trial.pkl'
     # savefilename_GF = os.path.join('OF_outputs','GF_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
     savefilename_BD = os.path.join('OF_outputs/data4_feb2024','BD_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
 
@@ -367,7 +369,9 @@ def main(img_process_selector,loadpath):
         if img_process_selector == 'w':
             cap.set(cv.CAP_PROP_POS_FRAMES, 3) # since first ref frame is messy for some reason.. does not cover all pins in binary verison. 
         ret, ref_frame = cap.read()
-        if not ret: print('ERROR: Cannot get frame.')
+        if not ret: 
+            print('STATUS: End of frames OR Cannot get frame.') 
+            pass
         cap.set(cv.CAP_PROP_POS_FRAMES, 0) # reset back. 
         
         # OF_GF(cap,ref_frame,img_process,savefilename_GF,mask_GF) # keeps gettig killed, due to RAM and CPU being saturated.
