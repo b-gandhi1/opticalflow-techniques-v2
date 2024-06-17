@@ -141,47 +141,22 @@ def plt_euler(rollX,pitchY,yawZ):
 def main(path, pitchroll):
     
     # load data > extract data
-    # fib_df1 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope1-20-Nov-2023--14-06-58.csv', delimiter=',',dtype={'Franka a': float,'Franka bi': float,'Franka cj': float,'Franka EE jk': float},header=None)
-    # fib_gnd_truth_df1 = fib_df1.iloc[1:,5:] # remove first data point to match sizes, and extract quaternions
-
-    # fib_df2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope2-20-Nov-2023--14-09-23.csv', delimiter=',',dtype={'Franka a': float,'Franka bi': float,'Franka cj': float,'Franka EE jk': float},header=None)
-    # fib_gnd_truth_df2 = fib_df2.iloc[1:,5:] # remove first data point to match sizes, and extract quaternions
-
-    # web_df1 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam1-20-Nov-2023--15-56-11.csv', delimiter=',',dtype={'Franka a': float,'Franka bi': float,'Franka cj': float,'Franka EE jk': float},header=None)
-    # web_gnd_truth_df1 = web_df1.iloc[1:,5:] # remove first data point to match sizes, and extract quaternions
-
-    # web_df2 = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam2-20-Nov-2023--15-59-11.csv', delimiter=',',dtype={'Franka a': float,'Franka bi': float,'Franka cj': float,'Franka EE jk': float},header=None)
-    # web_gnd_truth_df2 = web_df2.iloc[1:,5:] # remove first data point to match sizes, and extract quaternions
-
+    
     # load ground truth
-    raw_quat_data = pd.read_csv(path, delimiter=',',dtype={'Franka Rx': float,'Franka Ry': float,'Franka Rz': float,'Franka Rw': float})
-    # fib1gnd = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope1-05-Feb-2024--16-55-31.csv', delimiter=',',dtype={'Franka Rx': float,'Franka Ry': float,'Franka Rz': float,'Franka Rw': float})
-    # fib2gnd = pd.read_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope2-05-Feb-2024--17-25-47.csv', delimiter=',',dtype={'Franka Rx': float,'Franka Ry': float,'Franka Rz': float,'Franka Rw': float})
-    # web1gnd = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam1-05-Feb-2024--15-04-50.csv', delimiter=',',dtype={'Franka Rx': float,'Franka Ry': float,'Franka Rz': float,'Franka Rw': float})
-    # web2gnd = pd.read_csv('data_collection_with_franka/B07LabTrials/final/webcam/webcam2-05-Feb-2024--15-15-37.csv', delimiter=',',dtype={'Franka Rx': float,'Franka Ry': float,'Franka Rz': float,'Franka Rw': float})
-
+    raw_quat_data = pd.read_csv(path, delimiter=',',dtype={'Franka Rx': float,'Franka Ry': float,'Franka Rz': float,'Franka Rw': float})   # , skiprows=[i for i in range(13)]
+    
+    # crop out first 13 rows of data
+    # raw_quat_data = raw_quat_data.iloc[13:,:]
     
     # run conversions and save to csv
     euler_data = convertdata(raw_quat_data)
-    euler_data.to_csv('imu-fusion-outputs/'+ pitchroll + 'euler_gnd.csv')
-    
-    # fib1euler = convertdata(fib1gnd)
-    # fib1euler.to_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fib1euler.csv')    
-    # fib2euler = convertdata(fib2gnd)
-    # fib2euler.to_csv('data_collection_with_franka/B07LabTrials/final/fibrescope/fib2euler.csv')
-    # web1euler = convertdata(web1gnd)
-    # web1euler.to_csv('data_collection_with_franka/B07LabTrials/final/webcam/web1euler.csv')
-    # web2euler = convertdata(web2gnd)
-    # web2euler.to_csv('data_collection_with_franka/B07LabTrials/final/webcam/web2euler.csv')
+    euler_data.to_csv('imu-fusion-outputs/'+ pitchroll + 'euler_gnd.csv', header=True)
     
     # print(fib1euler)
     # plots:
     plt_euler(euler_data.iloc[:,0],euler_data.iloc[:,1],euler_data.iloc[:,2])
 
-    # plt_euler(fib1euler.iloc[:,0],fib1euler.iloc[:,1],fib1euler.iloc[:,2])
-    # plt_euler(fib2euler.iloc[:,0],fib2euler.iloc[:,1],fib2euler.iloc[:,2])
-    # plt_euler(web1euler.iloc[:,0],web1euler.iloc[:,1],web1euler.iloc[:,2])
-    # plt_euler(web2euler.iloc[:,0],web2euler.iloc[:,1],web2euler.iloc[:,2])
+
     plt.show()
 if __name__ == "__main__":
     path = sys.argv[1]
