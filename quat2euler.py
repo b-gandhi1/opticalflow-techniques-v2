@@ -78,7 +78,7 @@ def quaternion_rotation_matrix(q0,q1,q2,q3):
 # transformation matrix apply
 def transform_franka_pillow(w,x,y,z):
     # trans_mat = np.array([[-1,0,0,t_x],[0,1,0,t_y],[0,0,-1,t_z],[0,0,0,1]])
-    trans_mat = np.array([[-1,0,0],[0,1,0],[0,0,-1]]) # use later. 
+    trans_mat = np.array([[0,1,0],[1,0,0],[0,0,-1]]) # use later. 
     # rotation = R.from_matrix(trans_mat).as_quat()
     # [x',y',z'] = Rotation_matrix * [x,y,z] --- MATRIX MULTIPLICATION RULE
     # orig_euler = R.from_quat([w,x,y,z]).as_euler('xyz', degrees=False)
@@ -88,7 +88,7 @@ def transform_franka_pillow(w,x,y,z):
     # print(quat2rot)
     transformed = np.matmul(quat2rot,trans_mat)
     
-    trans_euler = R.from_matrix(transformed).as_euler('zxy', degrees=False)
+    trans_euler = R.from_matrix(quat2rot).as_euler('ZXY', degrees=True)
     
     # back2quat = R.from_euler('xyz', trans_euler, degrees=False).as_quat()
     # orig_euler = euler_from_quaternion(x,y,z,w)
@@ -136,6 +136,7 @@ def plt_euler(rollX,pitchY,yawZ):
     plt.plot(pitchY)
     plt.plot(yawZ)
     plt.legend(['roll_x','pitch_y','yaw_z'])
+    plt.grid()
     plt.tight_layout()
     # plt.show()
 def main(path, pitchroll):
