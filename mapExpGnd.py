@@ -6,6 +6,8 @@ import os
 import sys
 from linkingIO import normalize_vector
 
+# execution command example: python mapExpGnd.py pitch1 , python mapExpGnd.py roll1
+
 exp_data_path = sys.argv[1]
 length = len(exp_data_path)
 pressure_sel, i = exp_data_path[:length-1], exp_data_path[length-1] # split number at the endfrom filename 

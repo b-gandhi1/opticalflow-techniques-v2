@@ -5,6 +5,7 @@ from scipy.spatial.transform import Rotation as R
 import matplotlib.pyplot as plt
 import sys
 
+
 def euler_from_quaternion(x, y, z, w):
     """
     Convert a quaternion into euler angles (roll, pitch, yaw)
@@ -76,58 +77,38 @@ def quaternion_rotation_matrix(q0,q1,q2,q3):
     return rot_matrix
 
 # transformation matrix apply
-def transform_franka_pillow(w,x,y,z):
+def transform_franka_pillow(w,x,y,z,euler_seq):
     # trans_mat = np.array([[-1,0,0,t_x],[0,1,0,t_y],[0,0,-1,t_z],[0,0,0,1]])
     trans_mat = np.array([[0,1,0],[1,0,0],[0,0,-1]]) # use later. 
-    # rotation = R.from_matrix(trans_mat).as_quat()
-    # [x',y',z'] = Rotation_matrix * [x,y,z] --- MATRIX MULTIPLICATION RULE
-    # orig_euler = R.from_quat([w,x,y,z]).as_euler('xyz', degrees=False)
-    orig_euler = euler_from_quaternion(x,y,z,w)
+    # orig_euler = R.from_quat([w,x,y,z]).as_euler('ZYX', degrees=True)
+    # orig_euler = euler_from_quaternion(x,y,z,w)
     quat2rot = quaternion_rotation_matrix(w,x,y,z)
     # quat2rot = R.from_quat([w,x,y,z]).as_matrix()
     # print(quat2rot)
     transformed = np.matmul(quat2rot,trans_mat)
     
-    trans_euler = R.from_matrix(quat2rot).as_euler('ZXY', degrees=True)
+    trans_euler = R.from_matrix(transformed).as_euler(euler_seq, degrees=True)
     
     # back2quat = R.from_euler('xyz', trans_euler, degrees=False).as_quat()
-    # orig_euler = euler_from_quaternion(x,y,z,w)
     
     return trans_euler[0],trans_euler[1],trans_euler[2]
-
+    # return orig_euler[0],orig_euler[1],orig_euler[2]
     # return back2quat[1], back2quat[2], back2quat[3]
 # convert data
-def convertdata(data): 
-    # data = fib_gnd_truth_df1, fib_gnd_truth_df2, web_gnd_truth_df1, web_gnd_truth_df2 # one of these
+def convertdata(data,euler_seq): 
     rotations = pd.DataFrame(columns=['roll_x','pitch_y','yaw_z'])
-    # print('shape of data: ',np.shape(data))
     for _,quat in data.iterrows(): 
-        
-        # if type(quat) == str:
-        #     continue
-        
-        # print(quat)
-        # print(type(quat))
+    
         w = float(quat.loc['Franka Rw'])
         x = float(quat.loc['Franka Rx'])
         y = float(quat.loc['Franka Ry'])
         z = float(quat.loc['Franka Rz'])
         
-        # print('quat contents: ',w,x,y,z)
-        # print(type(w),type(x),type(y),type(z))
-        # trans_w,trans_x,trans_y,trans_z = transform_franka_pillow(w,x,y,z)
-        # roll_x, pitch_y, yaw_z = euler_from_quaternion(trans_w,trans_x,trans_y,trans_z)
-        roll_x,pitch_y,yaw_z = transform_franka_pillow(w,x,y,z)
-        
-        # rotations switch axes: 
-        # roll_x_new, pitch_y_new, yaw_z_new = pitch_y, roll_x, -yaw_z
-        
+        roll_x,pitch_y,yaw_z = transform_franka_pillow(w,x,y,z,euler_seq)
+
         var = pd.DataFrame({'roll_x':[roll_x],'pitch_y':[pitch_y],'yaw_z':[yaw_z]}).astype(float)
         rotations = pd.concat([rotations,var],ignore_index=True)
-        # print('quat contents: --')
-        # print(var)
         
-    # print('data type for rotations: ',type(rotations))
     return rotations
 
 def plt_euler(rollX,pitchY,yawZ):
@@ -139,27 +120,39 @@ def plt_euler(rollX,pitchY,yawZ):
     plt.grid()
     plt.tight_layout()
     # plt.show()
-def main(path, pitchroll):
+def main(path, pitchroll, i, euler_seq):
     
     # load data > extract data
     
     # load ground truth
     raw_quat_data = pd.read_csv(path, delimiter=',',dtype={'Franka Rx': float,'Franka Ry': float,'Franka Rz': float,'Franka Rw': float})   # , skiprows=[i for i in range(13)]
     
-    # crop out first 13 rows of data
-    # raw_quat_data = raw_quat_data.iloc[13:,:]
-    
     # run conversions and save to csv
-    euler_data = convertdata(raw_quat_data)
-    euler_data.to_csv('imu-fusion-outputs/'+ pitchroll + 'euler_gnd.csv', header=True)
+    euler_data = convertdata(raw_quat_data,euler_seq)
     
-    # print(fib1euler)
+    # save as csv
+    euler_data.to_csv('imu-fusion-outputs/'+ pitchroll + i + 'euler_gnd.csv', header=True)
+    
     # plots:
     plt_euler(euler_data.iloc[:,0],euler_data.iloc[:,1],euler_data.iloc[:,2])
 
-
     plt.show()
+    
 if __name__ == "__main__":
-    path = sys.argv[1]
-    pitchroll = sys.argv[2] # folder+filename
-    main(path, pitchroll) 
+    path = sys.argv[1] # pitch1 or roll1
+    
+    length = len(path)
+    pitchroll, i = path[:length-1], path[length-1] # split number at the endfrom filename 
+
+    if pitchroll == "pitch":
+        dirs = "pitch_4-jun-2024/fibrescope"+i
+        euler_seq = 'ZXY'
+    elif pitchroll == "roll":
+        dirs = "roll_6-jun-2024/fibrescope"+i
+        euler_seq = 'ZYX'
+    else:
+        print("ERROR: Unrecognised input for pressure selector.")
+
+    path_gen = "data_collection_with_franka/B07LabTrials/imu-sensor-fusion/"+dirs+path+".csv"
+    
+    main(path_gen, pitchroll, i, euler_seq) 

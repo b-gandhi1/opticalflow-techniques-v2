@@ -386,5 +386,19 @@ def main(img_process_selector,loadpath):
     plt.show()
 if __name__ == '__main__':
     img_process_selector = sys.argv[1]
-    path = sys.argv[2]
-    main(img_process_selector,path)
+    inp_path = sys.argv[2]
+    length = len(inp_path)
+    pressure_sel, i = inp_path[:length-1], inp_path[length-1] # split number at the endfrom filename 
+
+    if pressure_sel == "pitch":
+        pressure_path = "pitch_4-jun-2024/fibrescope"+i
+        ax_sel, gnd_sel, imu_sel = 'y_vals', 'pitch_y', 'IMU Y'
+    elif pressure_sel == "roll":
+        pressure_path = "roll_6-jun-2024/fibrescope"+i
+        ax_sel, gnd_sel,imu_sel = 'x_vals', 'roll_x', 'IMU X'
+    else:
+        print("ERROR: Unrecognised input for pressure selector.")
+    
+    # inp_path = pd.read_csv("imu-fusion-outputs/LK_"+pressure_sel+"/imu-fusion-outputs_LK_Zavg"+exp_data_path+".csv",delimiter=',',usecols=[ax_sel],dtype={ax_sel: float}) # x
+
+    main(img_process_selector,inp_path)
