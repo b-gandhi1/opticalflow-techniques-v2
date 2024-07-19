@@ -4,7 +4,7 @@ from scipy.spatial.transform import Rotation as R
 # import ast
 import matplotlib.pyplot as plt
 import sys
-
+import os
 
 def euler_from_quaternion(x, y, z, w):
     """
@@ -85,7 +85,7 @@ def transform_franka_pillow(w,x,y,z,euler_seq):
     quat2rot = quaternion_rotation_matrix(w,x,y,z)
     # quat2rot = R.from_quat([w,x,y,z]).as_matrix()
     # print(quat2rot)
-    transformed = np.matmul(quat2rot,trans_mat)
+    transformed = np.matmul(quat2rot,trans_mat) 
     
     trans_euler = R.from_matrix(transformed).as_euler(euler_seq, degrees=True)
     
@@ -96,8 +96,9 @@ def transform_franka_pillow(w,x,y,z,euler_seq):
     # return back2quat[1], back2quat[2], back2quat[3]
 # convert data
 def convertdata(data,euler_seq): 
-    rotations = pd.DataFrame(columns=['roll_x','pitch_y','yaw_z'])
-    for _,quat in data.iterrows(): 
+    rotations = pd.DataFrame(columns=['roll_x','pitch_y','yaw_z']) # dataframe init for saving output
+    
+    for _,quat in data.iterrows(): # read quaternions file > convert to euler > write to dataframe
     
         w = float(quat.loc['Franka Rw'])
         x = float(quat.loc['Franka Rx'])
@@ -121,7 +122,8 @@ def plt_euler(rollX,pitchY,yawZ):
     plt.tight_layout()
     # plt.show()
 def main(path, pitchroll, i, euler_seq):
-    
+    print("PATH READ FILE --------> ",path)
+
     # load data > extract data
     
     # load ground truth
@@ -130,8 +132,13 @@ def main(path, pitchroll, i, euler_seq):
     # run conversions and save to csv
     euler_data = convertdata(raw_quat_data,euler_seq)
     
+    if pitchroll == "pitch":
+        pitchroll_dir = "LK_pitch"
+    elif pitchroll == "roll":
+        pitchroll_dir = "LK_roll"
+    
     # save as csv
-    euler_data.to_csv('imu-fusion-outputs/'+ pitchroll + i + 'euler_gnd.csv', header=True)
+    euler_data.to_csv(os.path.join('imu-fusion-outputs', pitchroll_dir, pitchroll+i+'euler_gnd.csv'), header=['roll_x','pitch_y','yaw_z'])
     
     # plots:
     plt_euler(euler_data.iloc[:,0],euler_data.iloc[:,1],euler_data.iloc[:,2])
@@ -146,13 +153,14 @@ if __name__ == "__main__":
 
     if pitchroll == "pitch":
         dirs = "pitch_4-jun-2024/fibrescope"+i
-        euler_seq = 'ZXY'
+        euler_seq = "zxy"
     elif pitchroll == "roll":
         dirs = "roll_6-jun-2024/fibrescope"+i
-        euler_seq = 'ZYX'
+        euler_seq = "zyx"
     else:
         print("ERROR: Unrecognised input for pressure selector.")
+        exit()
 
-    path_gen = "data_collection_with_franka/B07LabTrials/imu-sensor-fusion/"+dirs+path+".csv"
+    path_gen = "data_collection_with_franka/B07LabTrials/imu-sensor-fusion/"+dirs+".csv"
     
     main(path_gen, pitchroll, i, euler_seq) 

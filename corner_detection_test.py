@@ -38,18 +38,18 @@ def fibrescope_process(frame):
     mask_blank = np.zeros_like(gray,dtype='uint8') # ,dtype='uint8'
     # x,y,w,h = 350,280,200,110 # after resizing frame size. 
     # rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
-    circle = cv.circle(mask_blank, (430,215), 100, (255,255,255), -1)
+    circle = cv.circle(mask_blank, (415,260), 100, (255,255,255), -1)
     masked = cv.bitwise_and(gray,gray,mask=circle)
     brightened = cv.addWeighted(masked, CONTRAST, np.zeros(masked.shape, masked.dtype), 0, BRIGHTNESS)     
-    binary = cv.threshold(brightened,55,255,cv.THRESH_BINARY)[1] # might remove: + cv.thresh_otsu
-    morph_open = cv.morphologyEx(binary,cv.MORPH_OPEN,kernel)
-    morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
-    dilated = cv.dilate(morph_close,kernel)
+    # binary = cv.threshold(brightened,55,255,cv.THRESH_BINARY)[1] # might remove: + cv.thresh_otsu
+    # morph_open = cv.morphologyEx(binary,cv.MORPH_OPEN,kernel)
+    # morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
+    # dilated = cv.dilate(morph_close,kernel)
 
-    return dilated
+    return brightened
 
 # Shi-Tomasi Corner Detection ---------------------------------------------------
-def shiTomasi(fibrescope,webcam):    
+def shiTomasi(fibrescope): # def shiTomasi(fibrescope,webcam):    
     # gray_fib = cv.cvtColor(fibrescope,cv.COLOR_BGR2GRAY) # Converting to grayscale
     # gray_web = cv.cvtColor(webcam,cv.COLOR_BGR2GRAY)
     
@@ -59,34 +59,34 @@ def shiTomasi(fibrescope,webcam):
                             blockSize = 3,
                             useHarrisDetector = False, # Shi-Tomasi better for corner detection than Harris for fibrescope. 
                             k = 0.04 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense.
-    web_features = dict( maxCorners = 1000, # 100 max val, and works best
-                            qualityLevel = 0.01, # between 0 and 1. Lower numbers = higher quality level. 
-                            minDistance = 20.0, # distance in pixels between points being monitored. 
-                            blockSize = 3,
-                            useHarrisDetector = False, 
-                            k = 0.04 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense. 
+    # web_features = dict( maxCorners = 1000, # 100 max val, and works best
+    #                         qualityLevel = 0.01, # between 0 and 1. Lower numbers = higher quality level. 
+    #                         minDistance = 20.0, # distance in pixels between points being monitored. 
+    #                         blockSize = 3,
+    #                         useHarrisDetector = False, 
+    #                         k = 0.04 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense. 
 
     corners_fib = cv.goodFeaturesToTrack(fibrescope, mask = None, **fib_features) # Specifying maximum number of corners as 1000
     # 0.01 is the minimum quality level below which the corners are rejected
     # 10 is the minimum euclidean distance between two corners
 
-    corners_web = cv.goodFeaturesToTrack(webcam,mask = None, **web_features)
+    # corners_web = cv.goodFeaturesToTrack(webcam,mask = None, **web_features)
     
     corners_fib = np.intp(corners_fib)
-    corners_web = np.intp(corners_web)
+    # corners_web = np.intp(corners_web)
     
     for corners in corners_fib:
         
         x,y = corners.ravel()
-        cv.circle(fibrescope,(x,y),3,[0,255,0],-1) # Circling the corners in green
+        cv.circle(fibrescope,(x,y),radius=3,color=(255,255,255),thickness=1,lineType=cv.LINE_AA) # Circling the corners in green
     
-    for corners in corners_web:
+    # for corners in corners_web:
         
-        x,y = corners.ravel()
-        cv.circle(webcam,(x,y),3,[0,255,0],-1)
+    #     x,y = corners.ravel()
+    #     cv.circle(webcam,(x,y),3,[0,255,0],-1)
 
     cv.imshow('Fibrescope via Shi-Tomasi Corner Detection',fibrescope)
-    cv.imshow('Webcam via Shi-Tomasi Corner Detection',webcam)
+    # cv.imshow('Webcam via Shi-Tomasi Corner Detection',webcam)
     
 # Harris Corner Detection -------------------------------------------------------
 def harris(fibrescope,webcam):
@@ -108,20 +108,22 @@ def harris(fibrescope,webcam):
     
 def main():
     # load images from video
-    fibrescope_vid = cv.VideoCapture('data_collection_with_franka/B07LabTrials/final/fibrescope/fibrescope1-20-Nov-2023--14-05-58.mp4')
-    webcam_vid = cv.VideoCapture('data_collection_with_franka/B07LabTrials/final/webcam/webcam1-20-Nov-2023--15-55-11.mp4')
+    fibrescope_vid = cv.VideoCapture('data_collection_with_franka/B07LabTrials/imu-sensor-fusion/pitch_4-jun-2024/fibrescope1.mp4')
+    # webcam_vid = cv.VideoCapture('data_collection_with_franka/B07LabTrials/final/webcam/webcam1-20-Nov-2023--15-55-11.mp4')
 
     # get first frame: 
     _, fibrescope = fibrescope_vid.read()
-    _, webcam = webcam_vid.read()
+    # _, webcam = webcam_vid.read()
     
     # apply filters
     fibrescope = fibrescope_process(fibrescope)
-    webcam = webcam_process(webcam)
+    # webcam = webcam_process(webcam)
+    
+    cv.imshow('Fibrescope raw',fibrescope) 
     
     # apply corner detectors 
-    shiTomasi(fibrescope,webcam)
-    harris(fibrescope,webcam)
+    shiTomasi(fibrescope) # shiTomasi(fibrescope,webcam)
+    # harris(fibrescope,webcam)
     # # susan corner detection: 
     # susan_fib = susan.susan_corner_detection(fibrescope)
     # susan_fib_out = cv.cvtColor(fibrescope, cv.COLOR_GRAY2RGB)
@@ -134,7 +136,7 @@ def main():
     
     # release
     cv.waitKey(0)
-    webcam_vid.release()
+    # webcam_vid.release()
     fibrescope_vid.release()
 
 if __name__ == '__main__':

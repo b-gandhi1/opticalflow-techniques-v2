@@ -12,6 +12,13 @@ import matplotlib.pyplot as plt
 
 # from pyOpticalFlow import getimgsfiles # from: pip install pyoptflow
 
+# these are for video writer: 
+FPS = 10.0 # 10 fps
+# TOT_FRAMES = int(FPS*60) # 10 fps, 60 secs (1 min) long recording
+# # TOT_FRAMES = int(FPS*5) # 5 secs
+DESIREDWIDTH = 640
+DESIREDHEIGHT = 480
+
 # fibrescope image enhancement parameters: 
 CONTRAST = 3
 BRIGHTNESS = 5
@@ -72,9 +79,14 @@ def z_brightness(frame): # use this to get average brightness of each frame
     bright_avg = np.average(norm_frame)
     return bright_avg
     
-def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optical flow, local solution
+def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,i): # Lucas-Kanade, sparse optical flow, local solution
     
     data_history = []
+    
+    # create video writer: 
+    # root = "imu-fusion-outputs"
+    # filename = "fib_vid_"+pitchroll+i+'.mp4'
+    # vid_writer = cv.VideoWriter(os.path.join(root,filename),cv.VideoWriter_fourcc(*'mp4v'),FPS,(DESIREDWIDTH,DESIREDHEIGHT),0)
     
     # LK OF parameters: 
     if img_process == webcam_process:
@@ -138,10 +150,12 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
             a, b = new.ravel()
             c, d = old.ravel()
             mask_OF = cv.line(mask_OF, (int(a), int(b)), (int(c), int(d)), color[i].tolist(), 2)
-            frame = cv.circle(frame_filt, (int(a), int(b)), 5, color[i].tolist(), -1)
+            frame = cv.circle(frame_filt, (int(a), int(b)), 1, color[i].tolist(), -1)
         img = cv.add(frame_filt, mask_OF)
         cv.imshow('Optical Flow - Lucas-Kanade', img)
-
+        
+        # vid_writer.write(img) # write video
+        
         # save data into a csv
         savedata = {
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),  # Get the current timestamp
@@ -172,6 +186,8 @@ def OF_LK(cap,ref_frame,img_process,savefilename): # Lucas-Kanade, sparse optica
         # ref_frame = frame_filt.copy()
         # p0 = good_new.reshape(-1, 1, 2)
     
+    # vid_writer.release()
+
     # test plots
     tst.oneD_plots(x_val_store)
     plt.title('x_val')
@@ -300,7 +316,7 @@ def blobdetect(cap,img_process,savefilename):
     with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
         pickle.dump(data_history, file)
 
-def main(img_process_selector,loadpath):
+def main(img_process_selector,loadpath,inp_path,pitchroll,i):
     # read video opencv
     # video_path = input('Enter input video path: ')
     cap = cv.VideoCapture(loadpath) # insert video path
@@ -337,10 +353,11 @@ def main(img_process_selector,loadpath):
     ref_frame = img_process(ref_frame) # was: (cap,ref_frame)
     cv.imshow('reference frame after filtering',ref_frame)
     # filenames to save output data: 
-    savefilename_LK = os.path.join('imu-fusion-outputs','roll8_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    savefilename_LK = os.path.join('imu-fusion-outputs',inp_path+'_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    
     # savefilename_LK = 'OF_outputs/trial.pkl'
     # savefilename_GF = os.path.join('OF_outputs','GF_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
-    savefilename_BD = os.path.join('OF_outputs/data4_feb2024','BD_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    # savefilename_BD = os.path.join('OF_outputs/data4_feb2024','BD_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
 
     # # multiprocess the 4 methods together
     # OF_LK_process = mp.Process(target=OF_LK, args=(cap,ref_frame,img_process,savefilename_LK))
@@ -363,7 +380,7 @@ def main(img_process_selector,loadpath):
         # print('All processes have finished.')
         
         # not using multi-processing: 
-        OF_LK(cap,ref_frame,img_process,savefilename_LK)
+        OF_LK(cap,ref_frame,img_process,savefilename_LK,pitchroll,i)
         
         # take reference frame - reset cap frame number. 
         if img_process_selector == 'w':
@@ -385,20 +402,23 @@ def main(img_process_selector,loadpath):
     cv.destroyAllWindows()
     plt.show()
 if __name__ == '__main__':
-    img_process_selector = sys.argv[1]
-    inp_path = sys.argv[2]
-    length = len(inp_path)
-    pressure_sel, i = inp_path[:length-1], inp_path[length-1] # split number at the endfrom filename 
 
-    if pressure_sel == "pitch":
-        pressure_path = "pitch_4-jun-2024/fibrescope"+i
+    img_process_selector = sys.argv[1] # f or w
+    
+    inp_path = sys.argv[2] # pitchN or rollN where N = 1:8
+    
+    # eg command: 
+    length = len(inp_path)
+    pitchroll, i = inp_path[:length-1], inp_path[length-1] # split number at the endfrom filename 
+
+    if pitchroll == "pitch":
+        pitchroll_path = "pitch_4-jun-2024/fibrescope"+i
         ax_sel, gnd_sel, imu_sel = 'y_vals', 'pitch_y', 'IMU Y'
-    elif pressure_sel == "roll":
-        pressure_path = "roll_6-jun-2024/fibrescope"+i
+    elif pitchroll == "roll":
+        pitchroll_path = "roll_6-jun-2024/fibrescope"+i
         ax_sel, gnd_sel,imu_sel = 'x_vals', 'roll_x', 'IMU X'
     else:
         print("ERROR: Unrecognised input for pressure selector.")
     
-    # inp_path = pd.read_csv("imu-fusion-outputs/LK_"+pressure_sel+"/imu-fusion-outputs_LK_Zavg"+exp_data_path+".csv",delimiter=',',usecols=[ax_sel],dtype={ax_sel: float}) # x
-
-    main(img_process_selector,inp_path)
+    inp_path_full = "data_collection_with_franka/B07LabTrials/imu-sensor-fusion/"+pitchroll_path+".mp4"
+    main(img_process_selector,inp_path_full,inp_path,pitchroll,i)
