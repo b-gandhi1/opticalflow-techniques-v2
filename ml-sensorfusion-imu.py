@@ -11,21 +11,12 @@ from sklearn.naive_bayes import GaussianNB, MultinomialNB
 from sklearn.metrics import (accuracy_score, confusion_matrix, ConfusionMatrixDisplay, f1_score, classification_report, roc_curve, RocCurveDisplay, auc)
 from sklearn.multioutput import MultiOutputRegressor
 # use torch instead of sklearn, numpy, and pandas - more efficient. 
-import torch 
+# import torch 
 import sys
+import glob
 
 # use for loops in data loader functions to gather data from all files! 
 
-def imu_data_loader(imu_sel,path): # load imu data and pressure vals from csv
-    gyro_data = pd.read_csv('data_collection_with_franka/B07LabTrials/imu-sensor-fusion/'+path+'.csv',delimiter=',',usecols=[imu_sel],dtype={imu_sel: float})
-    pressure_data = pd.read_csv("data_collection_with_franka/B07LabTrials/imu-sensor-fusion/"+path+".csv", delimiter=',',usecols=['Pressure (kPa)'],dtype={'Pressure (kPa)': float})
-    
-    
-def lk_data_loader(ax_sel,path):
-    lk_data = pd.read_csv("imu-fusion-outputs/LK_pitch/imu-fusion-outputs_LK_Zavg"+path+".csv",delimiter=',',usecols=[ax_sel],dtype={ax_sel: float})
-    
-def franka_euler_loader(gnd_sel,pitchroll,path):
-    gnd_franka_data = pd.read_csv("imu-fusion-outputs/LK_"+pitchroll+"/"+path+"euler_gnd.csv",delimiter=',',usecols=[gnd_sel],dtype={gnd_sel: float}) 
     
 def plots():
     ...
@@ -66,22 +57,25 @@ def main():
     ...
     
 if __name__ == "__main__":
-    exp_data_path = sys.argv[1]
-    length = len(exp_data_path)
-    pitchroll, i = exp_data_path[:length-1], exp_data_path[length-1] # split number at the endfrom filename 
+    
+    pitchrolli = sys.argv[1]
+    length = len(pitchrolli)
+    pitchroll, i = pitchrolli[:length-1], pitchrolli[length-1] # split number at the endfrom filename 
 
     if pitchroll == "pitch":
-        path = "pitch_4-jun-2024/fibrescope"+i
-        ax_sel, gnd_sel, imu_sel = 'y_vals', 'pitch_y', 'IMU Y'
+        # path = "imu-fusion-outputs/pitch_concat/pitch_concat"+i+".csv"
+        path = "imu-fusion-outputs/pitch_concat/pitch_concat"
     elif pitchroll == "roll":
-        path = "roll_6-jun-2024/fibrescope"+i
-        ax_sel, gnd_sel,imu_sel = 'x_vals', 'roll_x', 'IMU X'
+        # path = "imu-fusion-outputs/roll_concat/roll_concat"+i+".csv"
+        path = "imu-fusion-outputs/roll_concat/roll_concat"
     else:
         print("ERROR: Unrecognised input for pressure selector.")
     
-    imu_data, pressure_data = imu_data_loader(imu_sel,path)
-    lk_data = lk_data_loader(ax_sel,path)
-    gnd_franka_data = franka_euler_loader(gnd_sel,pitchroll,exp_data_path)
+    csvfiles = glob.glob(path+"*.csv")
+    data = pd.read_csv(path, delimiter=',',dtype={'GND (euler deg)': float,'Pressure (kPa)': float,'Gyro (deg)': float,'Experimental (LK raw)': float})
     
-    main(imu_data, pressure_data, lk_data, gnd_franka_data)
+    data_combined = pd.concat([pd.read_csv(f) for f in csvfiles])
+    data_train, data_test = train_test_split(data_combined, test_size=0.2)
+    
+    main(data_train, data_test)
     
