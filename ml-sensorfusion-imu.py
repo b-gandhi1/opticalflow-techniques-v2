@@ -53,15 +53,8 @@ def ml_model(pitchroll, mcpX_train, mcp_y_train, mcpX_test, mcp_y_test, mcp_imuX
     
     ...
 
-def main():
-    ...
+def main(pitchroll):
     
-if __name__ == "__main__":
-    
-    pitchrolli = sys.argv[1]
-    length = len(pitchrolli)
-    pitchroll, i = pitchrolli[:length-1], pitchrolli[length-1] # split number at the endfrom filename 
-
     if pitchroll == "pitch":
         # path = "imu-fusion-outputs/pitch_concat/pitch_concat"+i+".csv"
         path = "imu-fusion-outputs/pitch_concat/pitch_concat"
@@ -72,10 +65,18 @@ if __name__ == "__main__":
         print("ERROR: Unrecognised input for pressure selector.")
     
     csvfiles = glob.glob(path+"*.csv")
-    data = pd.read_csv(path, delimiter=',',dtype={'GND (euler deg)': float,'Pressure (kPa)': float,'Gyro (deg)': float,'Experimental (LK raw)': float})
     
-    data_combined = pd.concat([pd.read_csv(f) for f in csvfiles])
-    data_train, data_test = train_test_split(data_combined, test_size=0.2)
+    data_concat = pd.concat([pd.read_csv(f,delimiter=',',dtype={'GND (euler deg)': float,'Pressure (kPa)': float,'Gyro (deg)': float,'Experimental (LK raw)': float}) for f in csvfiles])
+    # print(data_concat.shape)
+    data_trainX, data_testX, data_trainY, data_testY = train_test_split(data_concat, test_size=0.2)
     
-    main(data_train, data_test)
+    # print("TrainX:", data_trainX.shape, "TrainY:", data_trainY.shape, "TestX:", data_testX.shape, "TestY:", data_testY.shape)
+    
+    model = 
+    
+if __name__ == "__main__":
+    
+    pitchroll = sys.argv[1] # save seperate models for pitch and roll
+    
+    main(pitchroll)
     

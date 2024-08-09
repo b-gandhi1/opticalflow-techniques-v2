@@ -1,11 +1,13 @@
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
+# from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 import os
 import sys
 from linkingIO import normalize_vector
+from scipy.spatial.transform import Rotation as R
+
 
 # execution command example: python mapExpGnd.py pitch1 , python mapExpGnd.py roll1
 
@@ -32,16 +34,36 @@ dat_exp_pres_norm = pd.concat([dat_exp_norm,dat_pressure_norm],axis=1) # x with 
 
 dat_gnd_euler = pd.read_csv("imu-fusion-outputs/LK_"+pitchroll+"/"+exp_data_path+"euler_gnd.csv",delimiter=',',usecols=["pitch_y"],dtype={gnd_sel: float}) * (-1)# pitch_y being used for pitch and roll data both, works well. 
 dat_gnd_euler_norm = normalize_vector(dat_gnd_euler) # gnd truth normalized
-    
+
+# dat_gnd_euler_rotated1 = R.from_euler('x', 180, degrees=True).apply(dat_gnd_euler)
+# dat_gnd_euler_rotated2 = R.from_euler('z', 90, degrees=True).apply(dat_gnd_euler_rotated1)
+# simper way to perform two rotations: 
+# dat_gnd_euler_rotated = R.from_euler('x', 180, degrees=True).apply(R.from_euler('z', 90, degrees=True).apply(dat_gnd_euler.iterrows()))
+
+# dat_gnd_euler_rotated = dat_gnd_euler.apply(lambda row: R.from_euler('x', 180, degrees=True).apply(R.from_euler('z', 90, degrees=True).apply([row[:,1],row[:,2],row[:,3]])), axis=1, result_type='expand')
+
 dat_gyro = pd.read_csv('data_collection_with_franka/B07LabTrials/imu-sensor-fusion/'+path+'.csv',delimiter=',',usecols=[imu_sel],dtype={imu_sel: float}) # feedback, *(-1) to fix orientations
 dat_gyro_norm = normalize_vector(dat_gyro) # feedback normalized
+
+# gyro_all = pd.read_csv('data_collection_with_franka/B07LabTrials/imu-sensor-fusion/'+path+'.csv',delimiter=',',usecols=['IMU X','IMU Y','IMU Z'],dtype={'IMU X': float,'IMU Y': float,'IMU Z': float})
+# gyro_all_rotated = gyro_all.apply(lambda row: R.from_euler('z', 90, degrees=True).apply(R.from_euler('x', 180, degrees=True).apply([row[0],row[1],row[2]])), axis=1, result_type='expand')
+
+# test plot gyro
+# plt.figure()
+# plt.plot(gyro_all_rotated.iloc[:,0], label='IMU X')
+# plt.plot(gyro_all_rotated.iloc[:,1], label='IMU Y')
+# plt.plot(gyro_all_rotated.iloc[:,2], label='IMU Z')
+# plt.legend()
+# plt.show()
 
 # set offsets
 if pitchroll == "pitch":
     offset_gnd_euler = dat_gnd_euler
+    # offset_gyro = gyro_all_rotated.iloc[:,1] # select column IMU Y
     offset_gyro = dat_gyro
 elif pitchroll == "roll": 
     offset_gnd_euler = -48.7 + dat_gnd_euler
+    # offset_gyro = -2.00 + gyro_all_rotated.iloc[:,0] # select column IMU X
     offset_gyro = -2.00 + dat_gyro
 else: 
     print("ERROR: Unrecognised input for motion type selector.")
@@ -56,7 +78,7 @@ scaler = MinMaxScaler(feature_range=(min_val,max_val))
 # NOTE: partial_fit(X, y=None) -> for continuous stream of x, so RT live demos. 
 
 scaled_dat_exp = scaler.fit_transform(dat_exp)
-    
+
 # plot the data
 time = np.linspace(0,60,len(dat_exp_pres_norm))
 plt.figure()
