@@ -11,37 +11,31 @@ from sklearn.naive_bayes import GaussianNB, MultinomialNB
 from sklearn.metrics import (accuracy_score, confusion_matrix, ConfusionMatrixDisplay, f1_score, classification_report, roc_curve, RocCurveDisplay, auc)
 from sklearn.multioutput import MultiOutputRegressor
 # use torch instead of sklearn, numpy, and pandas - more efficient. 
-# import torch 
+import torch 
 import sys
 import glob
 
 # use for loops in data loader functions to gather data from all files! 
 
-    
 def plots():
     ...
     
-def ml_model(pitchroll, mcpX_train, mcp_y_train, mcpX_test, mcp_y_test, mcp_imuX_train, mcp_imu_y_train, mcp_imuX_test, mcp_imu_y_test):
+def ml_model(useimu, mcpX_train, mcp_y_train, mcpX_test, mcp_y_test):
     
     gnb = GaussianNB()
     
     mcp_gnb = MultiOutputRegressor(gnb) # define model LK map
-    mcp_imu_gnb = MultiOutputRegressor(gnb) # define model LK+imu map
     
     pipe_mcp = make_pipeline(StandardScaler(), mcp_gnb)
-    pipe_mcp_imu = make_pipeline(StandardScaler(), mcp_imu_gnb)
     
     pipe_mcp.fit(mcpX_train, mcp_y_train)
-    pipe_mcp_imu.fit(mcp_imuX_train, mcp_imu_y_train)
     
     y_pred_mcp = pipe_mcp.predict(mcpX_test)
-    y_pred_mcp_imu = pipe_mcp_imu.predict(mcp_imuX_test)
     
     f1_mcp = f1_score(mcp_y_test, y_pred_mcp, average='weighted')
-    f1_mcp_imu = f1_score(mcp_imu_y_test, y_pred_mcp_imu, average='weighted')
     print("Metric:"+'\t'+"MCP" + '\t' + "MCP+IMU")
-    print("Accuracy: ", str(accuracy_score(mcp_y_test, y_pred_mcp)) + '\t' + str(accuracy_score(mcp_imu_y_test, y_pred_mcp_imu)))
-    print("F1 score: ", str(f1_mcp) + '\t' + str(f1_mcp_imu))
+    print("Accuracy: ", str(accuracy_score(mcp_y_test, y_pred_mcp)))
+    print("F1 score: ", str(f1_mcp))
     
     # confusion matrices
     
@@ -50,33 +44,46 @@ def ml_model(pitchroll, mcpX_train, mcp_y_train, mcpX_test, mcp_y_test, mcp_imuX
     # cross validations
     
     # save trained models
-    
-    ...
-
-def main(pitchroll):
-    
-    if pitchroll == "pitch":
-        # path = "imu-fusion-outputs/pitch_concat/pitch_concat"+i+".csv"
-        path = "imu-fusion-outputs/pitch_concat/pitch_concat"
-    elif pitchroll == "roll":
-        # path = "imu-fusion-outputs/roll_concat/roll_concat"+i+".csv"
-        path = "imu-fusion-outputs/roll_concat/roll_concat"
+    if useimu == "no-imu":
+        torch.save(pipe_mcp, 'ml-models/mcp_no-imu_model.pth')
+    elif useimu == "use-imu":
+        torch.save(pipe_mcp, 'ml-models/mcp_imu_model.pth')
     else:
-        print("ERROR: Unrecognised input for pressure selector.")
+        print("ERROR: Unrecognised input.")
+
+def main(useimu):
     
-    csvfiles = glob.glob(path+"*.csv")
+    # if pitchroll == "pitch":
+    #     # path = "imu-fusion-outputs/pitch_concat/pitch_concat"+i+".csv"
+    #     path = "imu-fusion-outputs/pitch_concat/pitch_concat"
+    # elif pitchroll == "roll":
+    #     # path = "imu-fusion-outputs/roll_concat/roll_concat"+i+".csv"
+    #     path = "imu-fusion-outputs/roll_concat/roll_concat"
+    # else:
+    #     print("ERROR: Unrecognised input for pressure selector.")
+    
+    path_pitchroll = "imu-fusion-outputs/pitchroll_concat/"
+
+    csvfiles = glob.glob(path_pitchroll+"**/*.csv",recursive=True) # reading pitch roll data both
     
     data_concat = pd.concat([pd.read_csv(f,delimiter=',',dtype={'GND (euler deg)': float,'Pressure (kPa)': float,'Gyro (deg)': float,'Experimental (LK raw)': float}) for f in csvfiles])
     # print(data_concat.shape)
-    data_trainX, data_testX, data_trainY, data_testY = train_test_split(data_concat, test_size=0.2)
     
-    # print("TrainX:", data_trainX.shape, "TrainY:", data_trainY.shape, "TestX:", data_testX.shape, "TestY:", data_testY.shape)
+    if useimu == "no-imu": # without imu
+        data_trainX, data_testX, data_trainY, data_testY = train_test_split(data_concat.loc[:,['Pressure (kPa)', 'Experimental (LK raw)']], data_concat.loc[:,['GND (euler deg)']], test_size=0.2)
+
+    elif useimu == "use-imu": # with imu
+        data_trainX, data_testX, data_trainY, data_testY = train_test_split(data_concat.loc[:,['Pressure (kPa)', 'Experimental (LK raw)', 'Gyro (deg)']], data_concat.loc[:,['GND (euler deg)']], test_size=0.2)
     
-    model = 
+    else: 
+        print("ERROR: Unrecognised input.")
+        
+    print("TrainX:", data_trainX.shape, "TrainY:", data_trainY.shape, "TestX:", data_testX.shape, "TestY:", data_testY.shape)
     
 if __name__ == "__main__":
     
-    pitchroll = sys.argv[1] # save seperate models for pitch and roll
+    useimu = sys.argv[1] # save seperate models for pitch and roll
     
-    main(pitchroll)
+    main(useimu)
+    # main()
     

@@ -5,10 +5,11 @@ import multiprocessing as mp
 import pickle # save 3D data from the different algorithms
 import time
 import os
-import glob
+import glob # this is used indirectly
 import sys
 import timeseries_test as tst
 import matplotlib.pyplot as plt
+from torch import tensor, cat, save
 
 # from pyOpticalFlow import getimgsfiles # from: pip install pyoptflow
 
@@ -131,6 +132,10 @@ def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,i): # Lucas-Kanade, s
 
     p1,st,err = None,None,None
     x_val_store, y_val_store = [], []
+    
+    x_val_tensor, y_val_tensor = tensor([]), tensor([]) # init tensors 
+    z_val_store = []
+    
     while True:
         ret, frame = cap.read()
         if not ret: break 
@@ -176,7 +181,12 @@ def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,i): # Lucas-Kanade, s
         x_val_store.append(np.mean(x_val))
         y_val_store.append(np.mean(y_val))
         
-        # Tests conclusion = TIME TO BE MEAN!! 
+        # Tests conclusion = TIME TO MEAN!
+        
+        # tensors: 
+        x_val_tensor = cat(x_val_tensor, x_val)
+        y_val_tensor = cat(y_val_tensor, y_val)
+        z_val_store = z_val_store.append(z_val) # np.append(z_val_store, z_val)
         
         if cv.waitKey(10) & 0xFF == ord('q'):
             print('Quitting...')
@@ -197,6 +207,11 @@ def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,i): # Lucas-Kanade, s
     
     with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
         pickle.dump(data_history, file)
+        
+    # save tensors: 
+    save(x_val_tensor, 'x_val_tensor.pt') # UPDATE PATH
+    save(y_val_tensor, 'y_val_tensor.pt')
+    save(z_val_store, 'z_val.pt')
 
 # def OF_GF(cap,ref_frame,img_process,savefilename,mask): # Gunnar-Farneback, dense optical flow
     # keeps getting killed... not sure why. 
