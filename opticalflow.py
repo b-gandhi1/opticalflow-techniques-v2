@@ -4,12 +4,13 @@ import numpy as np
 import multiprocessing as mp
 import pickle # save 3D data from the different algorithms
 import time
-import os
+import os, re
 import glob # this is used indirectly
 import sys
 import timeseries_test as tst
 import matplotlib.pyplot as plt
-from torch import tensor, cat, save
+import torch
+import pandas as pd
 
 # from pyOpticalFlow import getimgsfiles # from: pip install pyoptflow
 
@@ -80,7 +81,7 @@ def z_brightness(frame): # use this to get average brightness of each frame
     bright_avg = np.average(norm_frame)
     return bright_avg
     
-def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,i): # Lucas-Kanade, sparse optical flow, local solution
+def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,num): # Lucas-Kanade, sparse optical flow, local solution
     
     data_history = []
     
@@ -133,7 +134,7 @@ def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,i): # Lucas-Kanade, s
     p1,st,err = None,None,None
     x_val_store, y_val_store = [], []
     
-    x_val_tensor, y_val_tensor = tensor([]), tensor([]) # init tensors 
+    x_val_tensor, y_val_tensor = [],[] # torch.empty(), torch.empty() #torch.empty((0,2)), torch.empty((0,2)) # init tensors 
     z_val_store = []
     
     while True:
@@ -151,11 +152,11 @@ def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,i): # Lucas-Kanade, s
             good_new = p1[st==1]
             good_old = p0[st==1]
         
-        for i, (new, old) in enumerate(zip(good_new, good_old)):
+        for j, (new, old) in enumerate(zip(good_new, good_old)):
             a, b = new.ravel()
             c, d = old.ravel()
-            mask_OF = cv.line(mask_OF, (int(a), int(b)), (int(c), int(d)), color[i].tolist(), 2)
-            frame = cv.circle(frame_filt, (int(a), int(b)), 1, color[i].tolist(), -1)
+            mask_OF = cv.line(mask_OF, (int(a), int(b)), (int(c), int(d)), color[j].tolist(), 2)
+            frame = cv.circle(frame_filt, (int(a), int(b)), 1, color[j].tolist(), -1)
         img = cv.add(frame_filt, mask_OF)
         cv.imshow('Optical Flow - Lucas-Kanade', img)
         
@@ -184,9 +185,11 @@ def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,i): # Lucas-Kanade, s
         # Tests conclusion = TIME TO MEAN!
         
         # tensors: 
-        x_val_tensor = cat(x_val_tensor, x_val)
-        y_val_tensor = cat(y_val_tensor, y_val)
-        z_val_store = z_val_store.append(z_val) # np.append(z_val_store, z_val)
+        # x_val_tensor = torch.stack((x_val_tensor, torch.tensor(x_val)), dim=0)
+        x_val_tensor.append(torch.tensor(x_val))
+        # y_val_tensor = torch.stack((y_val_tensor, torch.tensor(y_val)), dim=0)
+        y_val_tensor.append(torch.tensor(y_val))
+        # z_val_store.append(z_val) # np.append(z_val_store, z_val)
         
         if cv.waitKey(10) & 0xFF == ord('q'):
             print('Quitting...')
@@ -205,13 +208,15 @@ def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,i): # Lucas-Kanade, s
     plt.title('y_val')
     plt.show()
     
-    with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
-        pickle.dump(data_history, file)
+    # with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
+    #     pickle.dump(data_history, file)
         
     # save tensors: 
-    save(x_val_tensor, 'x_val_tensor.pt') # UPDATE PATH
-    save(y_val_tensor, 'y_val_tensor.pt')
-    save(z_val_store, 'z_val.pt')
+    ptfiles = os.path.dirname(savefilename) # directory of savefilename
+    # num = max((int(num) for file in ptfiles for num in re.findall(r'\d+', os.path.splitext(file)[0])), default=0)+1
+    torch.save(x_val_tensor, ptfiles+'/tensor_x_val'+pitchroll+str(num)+'.pt')
+    torch.save(y_val_tensor, ptfiles+'/tensor_y_val'+pitchroll+str(num)+'.pt')
+    # pd.DataFrame(z_val_store).to_csv(ptfiles+'/z_val'+pitchroll+str(num)+'.csv') # save csv file for z vals
 
 # def OF_GF(cap,ref_frame,img_process,savefilename,mask): # Gunnar-Farneback, dense optical flow
     # keeps getting killed... not sure why. 
