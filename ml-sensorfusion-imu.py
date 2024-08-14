@@ -66,14 +66,17 @@ def main(useimu):
 
     csvfiles = glob.glob(path_pitchroll+"**/*.csv",recursive=True) # reading pitch roll data both
     
-    data_concat = pd.concat([pd.read_csv(f,delimiter=',',dtype={'GND (euler deg)': float,'Pressure (kPa)': float,'Gyro (deg)': float,'Experimental (LK raw)': float}) for f in csvfiles])
+    # load experimental data matrices from pickle files and create tensors
+    # create dataframe for all the tensors, use this in training dataset
+    
+    data_concat = pd.concat([pd.read_csv(f,delimiter=',',dtype={'GND (euler deg)': float,'Pressure (kPa)': float,'Gyro (deg)': float}) for f in csvfiles])
     # print(data_concat.shape)
     
     if useimu == "no-imu": # without imu
-        data_trainX, data_testX, data_trainY, data_testY = train_test_split(data_concat.loc[:,['Pressure (kPa)', 'Experimental (LK raw)']], data_concat.loc[:,['GND (euler deg)']], test_size=0.2)
+        data_trainX, data_testX, data_trainY, data_testY = train_test_split(data_concat.loc[:,['Pressure (kPa)']], data_concat.loc[:,['GND (euler deg)']], test_size=0.2)
 
     elif useimu == "use-imu": # with imu
-        data_trainX, data_testX, data_trainY, data_testY = train_test_split(data_concat.loc[:,['Pressure (kPa)', 'Experimental (LK raw)', 'Gyro (deg)']], data_concat.loc[:,['GND (euler deg)']], test_size=0.2)
+        data_trainX, data_testX, data_trainY, data_testY = train_test_split(data_concat.loc[:,['Pressure (kPa)', 'Gyro (deg)']], data_concat.loc[:,['GND (euler deg)']], test_size=0.2)
     
     else: 
         print("ERROR: Unrecognised input.")

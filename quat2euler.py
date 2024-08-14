@@ -79,9 +79,13 @@ def quaternion_rotation_matrix(q0,q1,q2,q3):
 # transformation matrix apply
 def transform_franka_pillow(w,x,y,z,euler_seq):
     # trans_mat = np.array([[-1,0,0,t_x],[0,1,0,t_y],[0,0,-1,t_z],[0,0,0,1]])
-    trans_mat = np.array([[0,1,0],[1,0,0],[0,0,-1]]) # use later. 
+    eeRoty43 = np.array([[-0.7314,0,0.6820],[0,1,0],[0.6820,0,0.7314]]) # 43 deress rotation around y axis of ee frame OR 137 degree rotation of base frame around y axis.
+    frame_rot_base2pillow = np.array([[0,1,0],[1,0,0],[0,0,-1]])
+    # trans_mat = np.matmul(frame_rot_base2pillow,eeRoty43) # this did not work either.. :()
+    trans_mat = frame_rot_base2pillow
     # orig_euler = R.from_quat([w,x,y,z]).as_euler('ZYX', degrees=True)
     # orig_euler = euler_from_quaternion(x,y,z,w)
+    # quat2rot = np.matmul(quaternion_rotation_matrix(w,x,y,z),eeRoty43) # This did not work :( Try again.. 
     quat2rot = quaternion_rotation_matrix(w,x,y,z)
     # quat2rot = R.from_quat([w,x,y,z]).as_matrix()
     # print(quat2rot)
