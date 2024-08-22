@@ -24,15 +24,20 @@ elif pitchroll == "roll":
 else:
     print("ERROR: Unrecognised input for pressure selector.")
 
+skipNrows = 13 # first N rows to be skipped to remove NAN and zero values from ground truth
+
 dat_exp = pd.read_csv("imu-fusion-outputs/LK_"+pitchroll+"/imu-fusion-outputs_LK_Zavg"+exp_data_path+".csv",delimiter=',',usecols=[ax_sel],dtype={ax_sel: float}) # lk data, experimental data
+dat_exp = dat_exp.iloc[skipNrows:]
 dat_pressure = pd.read_csv("data_collection_with_franka/B07LabTrials/imu-sensor-fusion/"+path+".csv", delimiter=',',usecols=['Pressure (kPa)'],dtype={'Pressure (kPa)': float}) # feedback
+dat_pressure = dat_pressure.iloc[skipNrows:]
 
 dat_exp_norm = normalize_vector(dat_exp) # x normalized
 dat_pressure_norm = normalize_vector(dat_pressure) # feedback normalized
 
 dat_exp_pres_norm = pd.concat([dat_exp_norm,dat_pressure_norm],axis=1) # x with feedback (pressure)
 
-dat_gnd_euler = pd.read_csv("imu-fusion-outputs/LK_"+pitchroll+"/"+exp_data_path+"euler_gnd.csv",delimiter=',',usecols=["pitch_y"],dtype={gnd_sel: float}) * (-1)# pitch_y being used for pitch and roll data both, works well. 
+dat_gnd_euler = pd.read_csv("imu-fusion-outputs/LK_"+pitchroll+"/"+exp_data_path+"euler_gnd.csv",delimiter=',',usecols=["pitch_y"],dtype={gnd_sel: float}) # pitch_y being used for pitch and roll data both, works well. 
+dat_gnd_euler = dat_gnd_euler.iloc[skipNrows:]
 dat_gnd_euler_norm = normalize_vector(dat_gnd_euler) # gnd truth normalized
 
 # dat_gnd_euler_rotated1 = R.from_euler('x', 180, degrees=True).apply(dat_gnd_euler)
@@ -43,6 +48,7 @@ dat_gnd_euler_norm = normalize_vector(dat_gnd_euler) # gnd truth normalized
 # dat_gnd_euler_rotated = dat_gnd_euler.apply(lambda row: R.from_euler('x', 180, degrees=True).apply(R.from_euler('z', 90, degrees=True).apply([row[:,1],row[:,2],row[:,3]])), axis=1, result_type='expand')
 
 dat_gyro = pd.read_csv('data_collection_with_franka/B07LabTrials/imu-sensor-fusion/'+path+'.csv',delimiter=',',usecols=[imu_sel],dtype={imu_sel: float}) # feedback, *(-1) to fix orientations
+dat_gyro = dat_gyro.iloc[skipNrows:]
 dat_gyro_norm = normalize_vector(dat_gyro) # feedback normalized
 
 # gyro_all = pd.read_csv('data_collection_with_franka/B07LabTrials/imu-sensor-fusion/'+path+'.csv',delimiter=',',usecols=['IMU X','IMU Y','IMU Z'],dtype={'IMU X': float,'IMU Y': float,'IMU Z': float})
@@ -58,7 +64,7 @@ dat_gyro_norm = normalize_vector(dat_gyro) # feedback normalized
 
 # set offsets
 if pitchroll == "pitch":
-    offset_gnd_euler = dat_gnd_euler
+    offset_gnd_euler = 36.0 + dat_gnd_euler
     # offset_gyro = gyro_all_rotated.iloc[:,1] # select column IMU Y
     offset_gyro = dat_gyro
 elif pitchroll == "roll": 
@@ -93,8 +99,8 @@ plt.show()
 # extract filtered data and save as csv files
 save_bool = sys.argv[2]
 if save_bool == "save":
-    data = pd.concat([offset_gnd_euler,dat_pressure,offset_gyro, dat_exp],axis=1, ignore_index=False)
-    savename = "imu-fusion-outputs/"+ pitchroll+"_concat/"+pitchroll+"_concat"+i+".csv"
+    data = pd.concat([offset_gnd_euler,dat_pressure,offset_gyro, dat_exp],axis=1, ignore_index=False,)
+    savename = "imu-fusion-outputs/pitchroll_concat/"+pitchroll+"_concat/"+pitchroll+"_concat"+i+".csv"
     data.to_csv(savename, header=["GND (euler deg)","Pressure (kPa)","Gyro (deg)","Experimental (LK raw)"])
 else: 
     print("Not saving...")

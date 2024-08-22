@@ -32,14 +32,15 @@ def fibrescope_process(frame):
     # height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
 
     # frame = cv.resize(frame,(int(width/2),int(height/2)),)
-
+    frame = cv.flip(frame,1) # horizontal flip 
+    
     kernel = np.ones((2,2),np.uint8)
     gray = cv.cvtColor(frame, cv.COLOR_RGB2GRAY)
     mask_blank = np.zeros_like(gray,dtype='uint8') # ,dtype='uint8'
-    # x,y,w,h = 350,280,200,110 # after resizing frame size. 
-    # rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
-    circle = cv.circle(mask_blank, (410,260), 100, (255,255,255), -1)
-    masked = cv.bitwise_and(gray,gray,mask=circle)
+    x,y,w,h = 350,280,200,110 # after resizing frame size. 
+    rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
+    # circle = cv.circle(mask_blank, (410,260), 100, (255,255,255), -1)
+    masked = cv.bitwise_and(gray,gray,mask=rect)
     brightened = cv.addWeighted(masked, CONTRAST, np.zeros(masked.shape, masked.dtype), 0, BRIGHTNESS)     
     binary = cv.threshold(brightened,57,255,cv.THRESH_BINARY)[1] # might remove: + cv.thresh_otsu
     morph_open = cv.morphologyEx(binary,cv.MORPH_OPEN,kernel)
@@ -349,6 +350,9 @@ def main(img_process_selector,loadpath,inp_path,pitchroll,i):
     # take reference frame 
     if img_process_selector == 'w':
         cap.set(cv.CAP_PROP_POS_FRAMES, 13) # since first ref frame is messy for some reason.. does not cover all pins in binary verison. 
+    else: # it'll be 'f', in which case FLIP horizontal
+        ref_frame = cv.flip(ref_frame,1) # flip horizontal
+
     ret, ref_frame = cap.read()
     if not ret: 
         print('STATUS: End of frames OR Cannot get frame.') 
@@ -432,13 +436,11 @@ if __name__ == '__main__':
     pitchroll, i = inp_path[:length-1], inp_path[length-1] # split number at the endfrom filename 
 
     if pitchroll == "pitch":
-        pitchroll_path = "pitch_4-jun-2024/fibrescope"+i
-        ax_sel, gnd_sel, imu_sel = 'y_vals', 'pitch_y', 'IMU Y'
+        pitchroll_path = "pitch_22-aug-2024/fibrescope"+i
     elif pitchroll == "roll":
-        pitchroll_path = "roll_6-jun-2024/fibrescope"+i
-        ax_sel, gnd_sel,imu_sel = 'x_vals', 'roll_x', 'IMU X'
+        pitchroll_path = "roll_22-aug-2024/fibrescope"+i
     else:
         print("ERROR: Unrecognised input for pressure selector.")
     
-    inp_path_full = "data_collection_with_franka/B07LabTrials/imu-sensor-fusion/"+pitchroll_path+".mp4"
+    inp_path_full = "data_collection_with_franka/B07LabTrials/imu-sensor-fusion2/"+pitchroll_path+".mp4"
     main(img_process_selector,inp_path_full,inp_path,pitchroll,i)
