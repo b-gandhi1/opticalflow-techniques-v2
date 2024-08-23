@@ -9,7 +9,7 @@ import glob # this is used indirectly
 import sys
 import timeseries_test as tst
 import matplotlib.pyplot as plt
-# import torch
+import torch
 import pandas as pd
 
 # from pyOpticalFlow import getimgsfiles # from: pip install pyoptflow
@@ -37,15 +37,15 @@ def fibrescope_process(frame):
     kernel = np.ones((2,2),np.uint8)
     gray = cv.cvtColor(frame, cv.COLOR_RGB2GRAY)
     mask_blank = np.zeros_like(gray,dtype='uint8') # ,dtype='uint8'
-    x,y,w,h = 350,280,200,110 # after resizing frame size. 
-    rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
-    # circle = cv.circle(mask_blank, (410,260), 100, (255,255,255), -1)
-    masked = cv.bitwise_and(gray,gray,mask=rect)
+    x,y,w,h = 190,255,200,100 # after resizing frame size. 
+    # rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
+    circle = cv.circle(mask_blank, (280,325), 100, (255,255,255), -1)
+    masked = cv.bitwise_and(gray,gray,mask=circle)
     brightened = cv.addWeighted(masked, CONTRAST, np.zeros(masked.shape, masked.dtype), 0, BRIGHTNESS)     
-    binary = cv.threshold(brightened,57,255,cv.THRESH_BINARY)[1] # might remove: + cv.thresh_otsu
-    morph_open = cv.morphologyEx(binary,cv.MORPH_OPEN,kernel)
-    morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
-    dilated = cv.dilate(morph_close,kernel)
+    # binary = cv.threshold(brightened,57,255,cv.THRESH_BINARY)[1] # might remove: + cv.thresh_otsu
+    # morph_open = cv.morphologyEx(binary,cv.MORPH_OPEN,kernel)
+    # morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
+    # dilated = cv.dilate(morph_close,kernel)
 
     return brightened
 
@@ -176,6 +176,8 @@ def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,num): # Lucas-Kanade,
         }
         data_history.append(savedata)
         
+        # print("x val size: ", np.shape(p1[...,0]), " y val size: ", np.shape(p1[...,1]))
+        
         # tests: 
         x_val, y_val = np.asarray(p1[...,0]), np.asarray(p1[...,1])
         # print('x_val size: ', np.shape(x_val), ' y_val size: ', np.shape(y_val))
@@ -186,10 +188,10 @@ def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,num): # Lucas-Kanade,
         # Tests conclusion = TIME TO MEAN!
         
         # tensors: 
-        # x_val_tensor = torch.stack((x_val_tensor, torch.tensor(x_val)), dim=0)
-        # x_val_tensor.append(torch.tensor(x_val))
-        # y_val_tensor = torch.stack((y_val_tensor, torch.tensor(y_val)), dim=0)
-        # y_val_tensor.append(torch.tensor(y_val))
+        # x_val_tensor = torch.stack([x_val_tensor, torch.tensor(x_val)], dim=0)
+        x_val_tensor.append(torch.tensor(x_val))
+        # y_val_tensor = torch.stack([y_val_tensor, torch.tensor(y_val)], dim=0)
+        y_val_tensor.append(torch.tensor(y_val))
         # z_val_store.append(z_val) # np.append(z_val_store, z_val)
         
         if cv.waitKey(10) & 0xFF == ord('q'):
@@ -209,15 +211,18 @@ def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,num): # Lucas-Kanade,
     plt.title('y_val')
     plt.show()
     
-    # with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
-    #     pickle.dump(data_history, file)
-    
-    # # save tensors: 
-    # ptfiles = os.path.dirname(savefilename) # directory of savefilename
-    # # num = max((int(num) for file in ptfiles for num in re.findall(r'\d+', os.path.splitext(file)[0])), default=0)+1
-    # torch.save(x_val_tensor, ptfiles+'/tensor_x_val'+pitchroll+str(num)+'.pt')
-    # torch.save(y_val_tensor, ptfiles+'/tensor_y_val'+pitchroll+str(num)+'.pt')
-    # # pd.DataFrame(z_val_store).to_csv(ptfiles+'/z_val'+pitchroll+str(num)+'.csv') # save csv file for z vals
+    with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
+        print("Saving data...")
+        pickle.dump(data_history, file)
+    print("Finished saving!")
+    # save tensors: 
+    x_val_tensor = torch.stack(x_val_tensor, dim=0)
+    y_val_tensor = torch.stack(y_val_tensor, dim=0)
+    ptfiles = os.path.dirname(savefilename) # directory of savefilename
+    # num = max((int(num) for file in ptfiles for num in re.findall(r'\d+', os.path.splitext(file)[0])), default=0)+1
+    torch.save(x_val_tensor, ptfiles+'/tensor_x_val'+pitchroll+str(num)+'.pt')
+    torch.save(y_val_tensor, ptfiles+'/tensor_y_val'+pitchroll+str(num)+'.pt')
+    pd.DataFrame(z_val_store).to_csv(ptfiles+'/z_val'+pitchroll+str(num)+'.csv') # save csv file for z vals
 
 # def OF_GF(cap,ref_frame,img_process,savefilename,mask): # Gunnar-Farneback, dense optical flow
     # keeps getting killed... not sure why. 
@@ -350,13 +355,15 @@ def main(img_process_selector,loadpath,inp_path,pitchroll,i):
     # take reference frame 
     if img_process_selector == 'w':
         cap.set(cv.CAP_PROP_POS_FRAMES, 13) # since first ref frame is messy for some reason.. does not cover all pins in binary verison. 
-    else: # it'll be 'f', in which case FLIP horizontal
-        ref_frame = cv.flip(ref_frame,1) # flip horizontal
 
     ret, ref_frame = cap.read()
     if not ret: 
         print('STATUS: End of frames OR Cannot get frame.') 
         pass
+    
+    # if img_process_selector == 'f':
+    #     ref_frame = cv.flip(ref_frame,1) # flip horizontal
+
     cap.set(cv.CAP_PROP_POS_FRAMES, 0) # reset back. 
     
     # width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
@@ -378,7 +385,6 @@ def main(img_process_selector,loadpath,inp_path,pitchroll,i):
     cv.imshow('reference frame after filtering',ref_frame)
     # filenames to save output data: 
     savefilename_LK = os.path.join('imu-fusion-outputs',inp_path+'_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
-    
     # savefilename_LK = 'OF_outputs/trial.pkl'
     # savefilename_GF = os.path.join('OF_outputs','GF_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
     # savefilename_BD = os.path.join('OF_outputs/data4_feb2024','BD_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
@@ -431,7 +437,8 @@ if __name__ == '__main__':
     
     inp_path = sys.argv[2] # pitchN or rollN where N = 1:8
     
-    # eg command: 
+    # eg command: python opticalflow.py f pitch1
+    
     length = len(inp_path)
     pitchroll, i = inp_path[:length-1], inp_path[length-1] # split number at the endfrom filename 
 
