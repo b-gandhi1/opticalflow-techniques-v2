@@ -192,7 +192,8 @@ def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,num): # Lucas-Kanade,
         x_val_tensor.append(torch.tensor(x_val))
         # y_val_tensor = torch.stack([y_val_tensor, torch.tensor(y_val)], dim=0)
         y_val_tensor.append(torch.tensor(y_val))
-        # z_val_store.append(z_val) # np.append(z_val_store, z_val)
+        
+        z_val_store.append(z_val) # np.append(z_val_store, z_val)
         
         if cv.waitKey(10) & 0xFF == ord('q'):
             print('Quitting...')
@@ -211,18 +212,19 @@ def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,num): # Lucas-Kanade,
     plt.title('y_val')
     plt.show()
     
-    with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
-        print("Saving data...")
-        pickle.dump(data_history, file)
+    # with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
+    #     print("Saving data...")
+    #     pickle.dump(data_history, file)
     print("Finished saving!")
     # save tensors: 
     x_val_tensor = torch.stack(x_val_tensor, dim=0)
     y_val_tensor = torch.stack(y_val_tensor, dim=0)
     ptfiles = os.path.dirname(savefilename) # directory of savefilename
     # num = max((int(num) for file in ptfiles for num in re.findall(r'\d+', os.path.splitext(file)[0])), default=0)+1
-    torch.save(x_val_tensor, ptfiles+'/tensor_x_val'+pitchroll+str(num)+'.pt')
-    torch.save(y_val_tensor, ptfiles+'/tensor_y_val'+pitchroll+str(num)+'.pt')
-    pd.DataFrame(z_val_store).to_csv(ptfiles+'/z_val'+pitchroll+str(num)+'.csv') # save csv file for z vals
+    # torch.save(x_val_tensor, ptfiles+'/tensor_x_val'+pitchroll+str(num)+'.pt')
+    # torch.save(y_val_tensor, ptfiles+'/tensor_y_val'+pitchroll+str(num)+'.pt')
+    LK_Zavg = pd.DataFrame({"x_vals":x_val_store, "y_vals":y_val_store, "z_vals":z_val_store}, dtype=float)
+    LK_Zavg.to_csv(ptfiles+'/imu-fusion-outputs_LK_Zavg'+pitchroll+str(num)+'.csv') # save csv file for z vals
 
 # def OF_GF(cap,ref_frame,img_process,savefilename,mask): # Gunnar-Farneback, dense optical flow
     # keeps getting killed... not sure why. 

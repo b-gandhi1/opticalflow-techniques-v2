@@ -137,9 +137,9 @@ def main(path, pitchroll, i, euler_seq):
     euler_data = convertdata(raw_quat_data,euler_seq)
     
     if pitchroll == "pitch":
-        pitchroll_dir = "LK_pitch"
+        pitchroll_dir = "LK_pitch2"
     elif pitchroll == "roll":
-        pitchroll_dir = "LK_roll"
+        pitchroll_dir = "LK_roll2"
     
     # save as csv
     euler_data.to_csv(os.path.join('imu-fusion-outputs', pitchroll_dir, pitchroll+i+'euler_gnd.csv'), header=['roll_x','pitch_y','yaw_z'])
@@ -156,15 +156,15 @@ if __name__ == "__main__":
     pitchroll, i = path[:length-1], path[length-1] # split number at the endfrom filename 
 
     if pitchroll == "pitch":
-        dirs = "pitch_4-jun-2024/fibrescope"+i
+        dirs = "pitch_22-aug-2024/fibrescope"+i
         euler_seq = "zxy"
     elif pitchroll == "roll":
-        dirs = "roll_6-jun-2024/fibrescope"+i
+        dirs = "roll_22-aug-2024/fibrescope"+i
         euler_seq = "zyx"
     else:
         print("ERROR: Unrecognised input for pressure selector.")
         exit()
 
-    path_gen = "data_collection_with_franka/B07LabTrials/imu-sensor-fusion/"+dirs+".csv"
+    path_gen = "data_collection_with_franka/B07LabTrials/imu-sensor-fusion2/"+dirs+".csv"
     
     main(path_gen, pitchroll, i, euler_seq) 

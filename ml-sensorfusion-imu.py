@@ -62,7 +62,7 @@ def main(useimu):
     # else:
     #     print("ERROR: Unrecognised input for pressure selector.")
     
-    path_pitchroll = "imu-fusion-outputs/pitchroll_concat/"
+    path_pitchroll = "imu-fusion-outputs/pitchroll_concat2/"
 
     csvfiles = glob.glob(path_pitchroll+"**/*.csv",recursive=True) # reading pitch roll data both
     
