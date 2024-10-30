@@ -1,6 +1,8 @@
 import cv2 as cv
 import numpy as np
 import susan_corner_detector as susan
+import sys
+import os
 
 # fibrescope image enhancement parameters: 
 CONTRAST = 3
@@ -40,13 +42,13 @@ def fibrescope_process(frame):
     # rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
     circle = cv.circle(mask_blank, (415,260), 100, (255,255,255), -1)
     masked = cv.bitwise_and(gray,gray,mask=circle)
-    brightened = cv.addWeighted(masked, CONTRAST, np.zeros(masked.shape, masked.dtype), 0, BRIGHTNESS)     
+    # brightened = cv.addWeighted(masked, CONTRAST, np.zeros(masked.shape, masked.dtype), 0, BRIGHTNESS)     
     # binary = cv.threshold(brightened,55,255,cv.THRESH_BINARY)[1] # might remove: + cv.thresh_otsu
     # morph_open = cv.morphologyEx(binary,cv.MORPH_OPEN,kernel)
     # morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
     # dilated = cv.dilate(morph_close,kernel)
 
-    return brightened
+    return masked
 
 # Shi-Tomasi Corner Detection ---------------------------------------------------
 def shiTomasi(fibrescope): # def shiTomasi(fibrescope,webcam):    
@@ -88,6 +90,8 @@ def shiTomasi(fibrescope): # def shiTomasi(fibrescope,webcam):
     cv.imshow('Fibrescope via Shi-Tomasi Corner Detection',fibrescope)
     # cv.imshow('Webcam via Shi-Tomasi Corner Detection',webcam)
     
+    return fibrescope
+    
 # Harris Corner Detection -------------------------------------------------------
 def harris(fibrescope,webcam):
     # gray_fib = cv.cvtColor(fibrescope,cv.COLOR_BGR2GRAY) # Converting the image to grayscale
@@ -106,23 +110,35 @@ def harris(fibrescope,webcam):
     cv.imshow('Fibrescope via Harris Corner Detection',fibrescope)
     cv.imshow('Webcam via Harris Corner Detection',webcam)
     
-def main():
+def main(path):
     # load images from video
-    fibrescope_vid = cv.VideoCapture('data_collection_with_franka/B07LabTrials/imu-sensor-fusion/pitch_4-jun-2024/fibrescope1.mp4')
-    # webcam_vid = cv.VideoCapture('data_collection_with_franka/B07LabTrials/final/webcam/webcam1-20-Nov-2023--15-55-11.mp4')
+    # fibrescope_vid = cv.VideoCapture(path)
+    # webcam_vid = cv.VideoCapture(path)
 
     # get first frame: 
-    _, fibrescope = fibrescope_vid.read()
+    # _, fibrescope = fibrescope_vid.read()
     # _, webcam = webcam_vid.read()
+    
+    # imread png
+    fibrescope = cv.imread(path)
+    fibrescope = cv.resize(fibrescope,(640,480)) # reduce image size
+    # cv.imshow('Fibrescope',fibrescope)
+    # cv.waitKey(0)
     
     # apply filters
     fibrescope = fibrescope_process(fibrescope)
     # webcam = webcam_process(webcam)
     
-    cv.imshow('Fibrescope raw',fibrescope) 
+    # from path extraxt filename
+    title = os.path.basename(path)
+    
+    cv.imshow(title,fibrescope) 
     
     # apply corner detectors 
-    shiTomasi(fibrescope) # shiTomasi(fibrescope,webcam)
+    fib_corners = shiTomasi(fibrescope) # shiTomasi(fibrescope,webcam)
+    savepath = os.path.join("diffuserTests","output","corners_"+title)
+    # print(savepath)
+    cv.imwrite(savepath,fib_corners) # save image
     # harris(fibrescope,webcam)
     # # susan corner detection: 
     # susan_fib = susan.susan_corner_detection(fibrescope)
@@ -137,10 +153,17 @@ def main():
     # release
     cv.waitKey(0)
     # webcam_vid.release()
-    fibrescope_vid.release()
-
+    # fibrescope_vid.release()
+    
 if __name__ == '__main__':
-    main()
+    path = os.path.join(sys.argv[1],"input")
+    
+    for file in os.listdir(path):
+        
+        path_file = os.path.join(path,file)
+        print(path_file)
+        main(os.path.join(path,file))
+        
     cv.destroyAllWindows()
 # the parameters here work pretty well for shi-tomasi and harris corner detection methods. Shi-tomasi is better.. 
 # binary frames for webcam - both detectors fail. why??? 
