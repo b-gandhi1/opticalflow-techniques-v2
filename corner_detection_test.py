@@ -156,7 +156,7 @@ def main(path):
     # fibrescope_vid.release()
     
 if __name__ == '__main__':
-    path = os.path.join(sys.argv[1],"input")
+    path = os.path.join(sys.argv[1],"input") # provide input as the directory 
     
     for file in os.listdir(path):
         
