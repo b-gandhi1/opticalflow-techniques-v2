@@ -2,23 +2,23 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 # from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split, cross_val_score, cross_validate
+from sklearn.model_selection import train_test_split, cross_val_score
 # from sklearn import svm
 from sklearn.linear_model import LinearRegression 
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.svm import SVR
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import r2_score
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler, MultiLabelBinarizer
 # from sklearn.naive_bayes import GaussianNB, MultinomialNB
-from sklearn.metrics import (accuracy_score, confusion_matrix, ConfusionMatrixDisplay, f1_score, classification_report, roc_curve, RocCurveDisplay, auc)
+# from sklearn.metrics import (accuracy_score, confusion_matrix, ConfusionMatrixDisplay, f1_score, classification_report, roc_curve, RocCurveDisplay, auc)
 from sklearn.multioutput import MultiOutputRegressor
 # use torch instead of sklearn, numpy, and pandas - more efficient. 
 import torch 
 import sys
 import glob
-
+from scipy.stats import spearmanr
     
 def ml_model(useimu, mcpX_train, mcp_y_train, mcpX_test, mcp_y_test, model):
     
@@ -37,7 +37,7 @@ def ml_model(useimu, mcpX_train, mcp_y_train, mcpX_test, mcp_y_test, model):
     rmse_mcp = np.sqrt(mse_mcp)
     mae_mcp = np.mean(np.abs(mcp_y_test - y_pred_mcp))
     
-    print("Metric:"+'\t'+"MCP" + '\t' + "MCP+IMU")
+    print("Metrics:"+'\t'+"Values")
     print("Mean Squared Error: ", str(mse_mcp))
     print("Root Mean Squared Error: ", str(rmse_mcp))
     print("Mean Absolute Error: ", str(mae_mcp))
@@ -73,7 +73,7 @@ def ml_model(useimu, mcpX_train, mcp_y_train, mcpX_test, mcp_y_test, model):
     # else:
     #     print("ERROR: Unrecognised input.")
 
-def main(useimu):
+def main(useimu, mode):
     
     path_pitchroll = "imu-fusion-data/pitchroll_concat2/"
 
@@ -82,34 +82,57 @@ def main(useimu):
     # load experimental data matrices from pickle files and create tensors
     # create dataframe for all the tensors, use this in training dataset
     
-    pitchroll_df = pd.concat((pd.read_csv(f, delimiter=',', dtype={'Franka Rx': float, 
-                                                                   'Franka Ry': float, 
-                                                                   'Franka Rz': float,
-                                                                   'Pressure (kPa)': float,
-                                                                   'IMY Rx': float, 
-                                                                   'IMU Ry': float, 
-                                                                   'IMU Rz': float, 
-                                                                   'LKx': float, 
-                                                                   'LKy': float, 
-                                                                   'BrtZ': float}) for f in csvfiles), axis='index')
+    pitchroll_df = pd.concat((pd.read_csv(f, delimiter=',', usecols={'Franka Rx', 'Franka Ry', 
+                                                                    'Pressure (kPa)', 
+                                                                    'IMU Rx', 'IMU Ry', 
+                                                                    'LKx', 'LKy'}, 
+                                                                    dtype={'Franka Rx': float, 
+                                                                            'Franka Ry': float, 
+                                                                            'Pressure (kPa)': float,
+                                                                            'IMY Rx': float, 
+                                                                            'IMU Ry': float, 
+                                                                            'LKx': float, 
+                                                                            'LKy': float}) 
+                                                                        for f in csvfiles), axis='index')
     print(pitchroll_df.shape)
     
-    if useimu == "no-imu": # without imu, no imu data used
-        data_trainX, data_testX, data_trainY, data_testY = train_test_split(
-            pitchroll_df.loc[:,['Pressure (kPa)','LKx','LKy','BrtZ']], 
-            pitchroll_df.loc[:,['Franka Rx', 'Franka Ry', 'Franka Rz']], 
-            test_size=0.2)
-
-    elif useimu == "use-imu": # with imu, use imu data
-        data_trainX, data_testX, data_trainY, data_testY = train_test_split(
-            pitchroll_df.loc[:,['Pressure (kPa)','LKx','LKy','BrtZ','IMU Rx', 'IMU Ry']], 
-            pitchroll_df.loc[:,['Franka Rx', 'Franka Ry', 'Franka Rz']], 
-            test_size=0.2)
+    # load tensor files - 
+    # tensor_paths = glob.glob("imu-fusion-data/pitchroll_concat2/*.pt")
+    # tensor_data_list = [torch.load(f) for f in tensor_paths]
+    # tensor_data = torch.cat(tensor_data_list, dim=0)
     
+    if useimu == "no-imu" and mode == "pitchroll": # without imu, no imu data used
+        experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKx', 'LKy']]
+        ground_truth = pitchroll_df.loc[:,['Franka Rx', 'Franka Ry']]
+
+    elif useimu == "no-imu" and mode == "pitch":
+        experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKy']]
+        ground_truth = pitchroll_df.loc[:,['Franka Rx']]
+
+    elif useimu == "no-imu" and mode == "roll":
+        experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKx']]
+        ground_truth = pitchroll_df.loc[:,['Franka Ry']]
+
+    elif useimu == "use-imu" and mode == "pitch":
+        experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKy', 'IMU Rx']]
+        ground_truth = pitchroll_df.loc[:,['Franka Rx']]
+
+    elif useimu == "use-imu" and mode == "roll":
+        experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKx', 'IMU Ry']]
+        ground_truth = pitchroll_df.loc[:,['Franka Ry']]
+
+    elif useimu == "use-imu" and mode == "pitchroll": # with imu, use imu data
+        experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKx', 'LKy', 'IMU Rx', 'IMU Ry']]
+        ground_truth = pitchroll_df.loc[:,['Franka Rx', 'Franka Ry']]
+
     else: 
         print("ERROR: Unrecognised input.")
-        
+
+    data_trainX, data_testX, data_trainY, data_testY = train_test_split(experimental_data, ground_truth, test_size=0.2) 
+    
     print("TrainX:", data_trainX.shape, "TrainY:", data_trainY.shape, "TestX:", data_testX.shape, "TestY:", data_testY.shape)
+    corr_nonlin, _ = spearmanr(experimental_data, ground_truth, alternative='two-sided',nan_policy='propagate')
+    print("Correlation: ", corr_nonlin)
     
     # run ml model
     print("Computing ML model: Linear Regression ......")
@@ -128,6 +151,7 @@ if __name__ == "__main__":
     
     useimu = sys.argv[1] # save seperate models for imu and no-imu
     
-    main(useimu)
-    # main()
+    mode = sys.argv[2] # pitch | roll | pitchroll 
     
+    main(useimu, mode)
+    # main()
