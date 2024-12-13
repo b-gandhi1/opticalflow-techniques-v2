@@ -43,6 +43,16 @@ def ml_model(useimu, mcpX_train, mcp_y_train, mcpX_test, mcp_y_test, model):
     print("Mean Absolute Error: ", str(mae_mcp))
     print("R2 Score: ", str(r2_score(mcp_y_test, y_pred_mcp)))
     
+    # plot of predictions and ground truth time series: 
+    time_ax = np.linspace(0,30,300)
+    plt.figure("Predictions and Ground Truth")
+    plt.plot(time_ax, mcp_y_test[0:300], label='Ground Truth')
+    plt.plot(time_ax, y_pred_mcp[0:300], label='Predictions')
+    plt.xlabel("Time (s)")
+    plt.ylabel("Values")
+    plt.title("Predictions and Ground Truth")
+    plt.legend()
+    
     # Residual Plot
     plt.figure("Residual Plot")
     plt.scatter(y_pred_mcp, mcp_y_test - y_pred_mcp)
@@ -76,8 +86,13 @@ def ml_model(useimu, mcpX_train, mcp_y_train, mcpX_test, mcp_y_test, model):
 def main(useimu, mode):
     
     path_pitchroll = "imu-fusion-data/pitchroll_concat2/"
-
-    csvfiles = glob.glob(path_pitchroll+"/"+"*.csv",recursive=True) # reading pitch roll data both
+    
+    if mode == "pitch" or "roll": # or "tz":
+        read_mode = mode
+    else:
+        read_mode = "**/"
+    csvfiles = glob.glob(path_pitchroll+"/"+read_mode+"*.csv",recursive=True) # reading pitch roll data as specified by mode
+    print(csvfiles)
     
     # load experimental data matrices from pickle files and create tensors
     # create dataframe for all the tensors, use this in training dataset
@@ -106,27 +121,36 @@ def main(useimu, mode):
         ground_truth = pitchroll_df.loc[:,['Franka Rx', 'Franka Ry']]
 
     elif useimu == "no-imu" and mode == "pitch":
+        experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKx']]
+        ground_truth = pitchroll_df.loc[:,['Franka Ry']]
+    
+    elif useimu == "no-imu" and mode == "roll":
         experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKy']]
         ground_truth = pitchroll_df.loc[:,['Franka Rx']]
 
-    elif useimu == "no-imu" and mode == "roll":
-        experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKx']]
-        ground_truth = pitchroll_df.loc[:,['Franka Ry']]
-
+    # elif useimu == "no-imu" and mode == "tz":
+    #     experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'BrtZ']]
+    #     ground_truth = pitchroll_df.loc[:,['Franka Tz']]
+        
     elif useimu == "use-imu" and mode == "pitch":
-        experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKy', 'IMU Rx']]
-        ground_truth = pitchroll_df.loc[:,['Franka Rx']]
+        experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKx', 'IMU Rx']]
+        ground_truth = pitchroll_df.loc[:,['Franka Ry']]
 
     elif useimu == "use-imu" and mode == "roll":
-        experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKx', 'IMU Ry']]
-        ground_truth = pitchroll_df.loc[:,['Franka Ry']]
+        experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKy', 'IMU Ry']]
+        ground_truth = pitchroll_df.loc[:,['Franka Rx']]
 
     elif useimu == "use-imu" and mode == "pitchroll": # with imu, use imu data
         experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKx', 'LKy', 'IMU Rx', 'IMU Ry']]
         ground_truth = pitchroll_df.loc[:,['Franka Rx', 'Franka Ry']]
 
+    # elif useimu == "use-imu" and mode == 'tz': 
+    #     print("ERROR: Invalid Combination, IMU Tz data not available.")
+    #     exit()
+        
     else: 
-        print("ERROR: Unrecognised input.")
+        print("ERROR: Unrecognised input. Expected inputs are imu= no-imu | use-imu ; ")
+        exit()
 
     data_trainX, data_testX, data_trainY, data_testY = train_test_split(experimental_data, ground_truth, test_size=0.2) 
     
@@ -151,7 +175,7 @@ if __name__ == "__main__":
     
     useimu = sys.argv[1] # save seperate models for imu and no-imu
     
-    mode = sys.argv[2] # pitch | roll | pitchroll 
+    mode = sys.argv[2] # pitch | roll | pitchroll
     
     main(useimu, mode)
     # main()
