@@ -14,6 +14,7 @@ from sklearn.preprocessing import StandardScaler, MultiLabelBinarizer
 # from sklearn.naive_bayes import GaussianNB, MultinomialNB
 # from sklearn.metrics import (accuracy_score, confusion_matrix, ConfusionMatrixDisplay, f1_score, classification_report, roc_curve, RocCurveDisplay, auc)
 from sklearn.multioutput import MultiOutputRegressor
+from sklearn.neural_network import MLPRegressor
 # use torch instead of sklearn, numpy, and pandas - more efficient. 
 import torch 
 import sys
@@ -111,6 +112,50 @@ def main(useimu, mode):
                                                                         for f in csvfiles), axis='index')
     print(pitchroll_df.shape)
     
+    # check data loaded: 
+    
+    # xs = pitchroll_df.loc[300:600+1,['Franka Rx']]
+    # ys = pitchroll_df.loc[300:600+1,['Franka Ry']]
+    # ts = np.linspace(0,300,len(xs))
+    
+    # plt.figure()
+    
+    # plt.subplot(3,1,1)
+    # plt.plot(ts, xs, label='franka_Rx')
+    # plt.plot(ts, ys, label='franka_Ry')
+    # plt.legend()
+    # plt.title(mode)
+
+    # plt.subplot(3,1,2)
+    # ax1 = plt.gca()   
+    # LKx = pitchroll_df.loc[300:600+1,['LKx']]
+    # LKy = pitchroll_df.loc[300:600+1,['LKy']]
+    # ax1.plot(ts, LKx, 'b-', label='LKx')
+    # ax1.set_ylabel('LKx', color='b')
+    # ax1.tick_params('y', colors='b')
+    # # ax1.legend(loc='upper left')
+    # ax2 = ax1.twinx()
+    # ax2.plot(ts, LKy, 'g-', label='LKy')
+    # ax2.set_ylabel('LKy', color='g')
+    # ax2.tick_params('y', colors='g')
+    # # ax2.legend(loc='upper right') 
+    
+    # plt.subplot(3,1,3)
+    # imuX = pitchroll_df.loc[300:600+1, ['IMU Rx']]
+    # imuY = pitchroll_df.loc[300:600+1, ['IMU Ry']]
+    # plt.plot(ts, imuX, label='IMU X')
+    # plt.plot(ts, imuY, label='IMU Y')
+    # plt.legend()
+    
+    # plt.tight_layout()
+    # plt.show()
+    
+    # to_cont = input("Continue? (y/n): ")
+    # if to_cont == 'n':
+    #     exit()
+    # else:
+    #     pass
+    
     # load tensor files - 
     # tensor_paths = glob.glob("imu-fusion-data/pitchroll_concat2/*.pt")
     # tensor_data_list = [torch.load(f) for f in tensor_paths]
@@ -152,24 +197,42 @@ def main(useimu, mode):
         print("ERROR: Unrecognised input. Expected inputs are imu= no-imu | use-imu ; ")
         exit()
 
-    data_trainX, data_testX, data_trainY, data_testY = train_test_split(experimental_data, ground_truth, test_size=0.2) 
+    data_trainX, data_testX, data_trainY, data_testY = train_test_split(experimental_data, ground_truth, test_size=0.2, shuffle=False) 
+    
+    # test plots: 
+    
+    # plt.figure()
+    # plt.plot(ts, data_trainX[1:300+3], '-', label='exp dat')
+    # plt.plot(ts, data_trainY[1:300+3], '-', label='gnd data')
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.show()
+    
+    # to_cont = input("Continue? (y/n): ")
+    # if to_cont == 'n':
+    #     exit()
+    # else:
+    #     pass
     
     print("TrainX:", data_trainX.shape, "TrainY:", data_trainY.shape, "TestX:", data_testX.shape, "TestY:", data_testY.shape)
     corr_nonlin, _ = spearmanr(experimental_data, ground_truth, alternative='two-sided',nan_policy='propagate')
     print("Correlation: ", corr_nonlin)
     
     # run ml model
-    print("Computing ML model: Linear Regression ......")
-    ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=LinearRegression())
+    # print("Computing ML model: Linear Regression ......")
+    # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=LinearRegression())
     
-    print("Computing ML model: Decision Tree Regressor ......")
-    ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=DecisionTreeRegressor())
+    # print("Computing ML model: Decision Tree Regressor ......")
+    # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=DecisionTreeRegressor())
     
-    print("Computing ML model: Random Forest Regressor ......")
-    ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=RandomForestRegressor())
+    # print("Computing ML model: Random Forest Regressor ......")
+    # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=RandomForestRegressor())
     
-    print("Computing ML model: Support Vector Regressor ......")
-    ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=SVR())
+    # print("Computing ML model: Support Vector Regressor ......")
+    # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=SVR())
+    
+    print("Computing ML model: Multi-layer Perceptron Regressor ......")
+    ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=MLPRegressor(max_iter=5000,early_stopping=True)) # further fine tune
     
 if __name__ == "__main__":
     
