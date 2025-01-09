@@ -4,7 +4,7 @@ import pandas as pd
 # from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split, cross_val_score
 # from sklearn import svm
-from sklearn.linear_model import LinearRegression 
+from sklearn.linear_model import LinearRegression, Lasso, LassoLars, ElasticNet, Ridge, BayesianRidge, HuberRegressor, PassiveAggressiveRegressor, RANSACRegressor, SGDRegressor, TheilSenRegressor
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.svm import SVR
@@ -14,9 +14,8 @@ from sklearn.preprocessing import StandardScaler, MultiLabelBinarizer
 # from sklearn.naive_bayes import GaussianNB, MultinomialNB
 # from sklearn.metrics import (accuracy_score, confusion_matrix, ConfusionMatrixDisplay, f1_score, classification_report, roc_curve, RocCurveDisplay, auc)
 from sklearn.multioutput import MultiOutputRegressor
-from sklearn.neural_network import MLPRegressor
-# use torch instead of sklearn, numpy, and pandas - more efficient. 
-import torch 
+from sklearn.neural_network import MLPRegressor, BernoulliRBM
+import torch
 import sys
 import glob
 from scipy.stats import spearmanr
@@ -112,6 +111,16 @@ def main(useimu, mode):
                                                                         for f in csvfiles), axis='index')
     print(pitchroll_df.shape)
     
+    # tensot (.pt) files: 
+    ptfiles = glob.glob(path_pitchroll+"/"+read_mode+"*.pt")
+    print(ptfiles) # print the list of selected files, should be x and y data for pitch | roll
+    exp_tensor = [torch.load(f) for f in ptfiles]
+    # for i, tensor in enumerate(exp_tensor):
+    #     print(f"Shape of tensor {i+1}: {tensor.shape}")
+    # concatenate tensors: 
+    concat_exp_tensor = torch.cat(exp_tensor, dim=0)
+    # print("Merged Tensor Shape:", concat_exp_tensor.shape)
+    
     # check data loaded: 
     
     # xs = pitchroll_df.loc[300:600+1,['Franka Rx']]
@@ -166,11 +175,11 @@ def main(useimu, mode):
         ground_truth = pitchroll_df.loc[:,['Franka Rx', 'Franka Ry']]
 
     elif useimu == "no-imu" and mode == "pitch":
-        experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKx']]
+        experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKx', 'LKy']]
         ground_truth = pitchroll_df.loc[:,['Franka Ry']]
     
     elif useimu == "no-imu" and mode == "roll":
-        experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKy']]
+        experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKx', 'LKy']]
         ground_truth = pitchroll_df.loc[:,['Franka Rx']]
 
     # elif useimu == "no-imu" and mode == "tz":
@@ -178,11 +187,11 @@ def main(useimu, mode):
     #     ground_truth = pitchroll_df.loc[:,['Franka Tz']]
         
     elif useimu == "use-imu" and mode == "pitch":
-        experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKx', 'IMU Rx']]
+        experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKx', 'LKy', 'IMU Rx']]
         ground_truth = pitchroll_df.loc[:,['Franka Ry']]
 
     elif useimu == "use-imu" and mode == "roll":
-        experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKy', 'IMU Ry']]
+        experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKx', 'LKy', 'IMU Ry']]
         ground_truth = pitchroll_df.loc[:,['Franka Rx']]
 
     elif useimu == "use-imu" and mode == "pitchroll": # with imu, use imu data
@@ -197,7 +206,7 @@ def main(useimu, mode):
         print("ERROR: Unrecognised input. Expected inputs are imu= no-imu | use-imu ; ")
         exit()
 
-    data_trainX, data_testX, data_trainY, data_testY = train_test_split(experimental_data, ground_truth, test_size=0.2, shuffle=False) 
+    data_trainX, data_testX, data_trainY, data_testY = train_test_split(experimental_data, ground_truth, test_size=0.1, shuffle=False) 
     
     # test plots: 
     
@@ -219,24 +228,56 @@ def main(useimu, mode):
     print("Correlation: ", corr_nonlin)
     
     # run ml model
-    # print("Computing ML model: Linear Regression ......")
+    print("Computing ML model: Linear Regression ......")
     # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=LinearRegression())
     
-    # print("Computing ML model: Decision Tree Regressor ......")
+    print("Computing ML model: Decision Tree Regressor ......")
     # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=DecisionTreeRegressor())
     
-    # print("Computing ML model: Random Forest Regressor ......")
+    print("Computing ML model: Random Forest Regressor ......")
     # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=RandomForestRegressor())
     
-    # print("Computing ML model: Support Vector Regressor ......")
+    print("Computing ML model: Support Vector Regressor ......")
     # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=SVR())
     
+    print("Computing ML model: Lasso Regressor ......")
+    # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=Lasso())
+    
+    print("Computing ML model: Lasso Lars Regressor ......")
+    # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=make_pipeline(StandardScaler(with_mean=False), LassoLars()))
+    
+    print("Computing ML model: Elastic Net Regressor ......")
+    # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=ElasticNet())
+    
+    print("Computing ML model: Ridge Regressor ......")
+    # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=Ridge())
+    
+    print("Computing ML model: Bayesian Ridge Regressor ......")
+    # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=BayesianRidge())
+    
+    print("Computing ML model: Huber Regressor ......")
+    # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=HuberRegressor())
+    
+    print("Computing ML model: Passive Aggressive Regressor ......")
+    # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=PassiveAggressiveRegressor())
+    
+    print("Computing ML model: RANSAC Regressor ......")
+    # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=RANSACRegressor())
+    
+    print("Computing ML model: SGD Regressor ......")
+    # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=SGDRegressor())
+    
+    print("Computing ML model: Theil Sen Regressor ......")
+    # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=TheilSenRegressor())
+    
     print("Computing ML model: Multi-layer Perceptron Regressor ......")
-    ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=MLPRegressor(max_iter=5000,early_stopping=True)) # further fine tune
+    # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=MLPRegressor(max_iter=5000,early_stopping=True)) # further fine tune
+    
+    custom_model = ...
     
 if __name__ == "__main__":
     
-    useimu = sys.argv[1] # save seperate models for imu and no-imu
+    useimu = sys.argv[1] # save seperate models for use-imu and no-imu
     
     mode = sys.argv[2] # pitch | roll | pitchroll
     
