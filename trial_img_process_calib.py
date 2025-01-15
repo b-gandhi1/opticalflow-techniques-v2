@@ -13,8 +13,7 @@ HEIGHT = 480
 CONTRAST = 3
 BRIGHTNESS = 5
 # def fibrescope_process(frame,width,height,map1,map2):    
-def fibrescope_process(frame):
-    
+def fibrescope_process(frame):    
     # undistorted_img = cv.remap(frame,map1,map2,interpolation=cv.INTER_LINEAR,borderMode=cv.BORDER_CONSTANT) # fisheye undistort
 
     # cv.imshow('calib: raw img, press key to close', img)
@@ -34,7 +33,7 @@ def fibrescope_process(frame):
     # x,y,w,h = 350,280,200,110 # after resizing frame size. UPDATE THIS
     # x,y,w,h = 0,0,frame.shape[1],frame.shape[0] # no cropping, using all of it for now. 
     # rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
-    circle = cv.circle(mask_blank, (420,300), 100, (255,255,255), -1)
+    circle = cv.circle(mask_blank, (340,125), 100, (255,255,255), -1)
     masked = cv.bitwise_and(gray,gray,mask=circle)
     brightened = cv.addWeighted(masked, CONTRAST, np.zeros(masked.shape, masked.dtype), 0, BRIGHTNESS)     
     binary = cv.threshold(brightened,55,255,cv.THRESH_BINARY)[1] # might remove: + cv.thresh_otsu
@@ -43,9 +42,11 @@ def fibrescope_process(frame):
     morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
     dilated = cv.dilate(morph_close,kernel)
 
-    return dilated
+    masked = cv.flip(masked,1) # horizontal flip 
 
-# def fish_calib_params():
+    return masked
+
+def fish_calib_params():
 
     CHECKERBOARD = (7,7) # number of inside corners in their chessboard, UPDATE!
 
@@ -176,14 +177,14 @@ def main(img_process_selector,path):
     #     # calib_path = input('Enter calibration parameters file path: ')
     #     calib_path = 'data collection with franka/ViconLab/fibrescope/CalibrationParameters_DIM_K_D_2023-09-12.npz'
     #     npzfile = np.load(calib_path)
-        
+    
     #     # verify variable names
     #     variable_names = npzfile.files
 
     #     # Print the variable names
     #     for variable_name in variable_names:
     #         print(variable_name)
-            
+    
     #     DIM = npzfile['DIM']
     #     K = npzfile['K']
     #     D = npzfile['D']

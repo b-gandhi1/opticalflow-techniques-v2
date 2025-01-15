@@ -31,15 +31,13 @@ def fibrescope_process(frame):
     # width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
     # height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
 
-    # frame = cv.resize(frame,(int(width/2),int(height/2)),)
-    frame = cv.flip(frame,1) # horizontal flip 
-    
+    # frame = cv.resize(frame,(int(width/2),int(height/2)),)    
     kernel = np.ones((2,2),np.uint8)
     gray = cv.cvtColor(frame, cv.COLOR_RGB2GRAY)
     mask_blank = np.zeros_like(gray,dtype='uint8') # ,dtype='uint8'
     x,y,w,h = 190,255,200,100 # after resizing frame size. 
     # rect = cv.rectangle(mask_blank, (x, y), (x+w, y+h), (255,255,255), -1) # mask apply
-    circle = cv.circle(mask_blank, (280,325), 100, (255,255,255), -1)
+    circle = cv.circle(mask_blank, (340,125), 100, (255,255,255), -1)
     masked = cv.bitwise_and(gray,gray,mask=circle)
     brightened = cv.addWeighted(masked, CONTRAST, np.zeros(masked.shape, masked.dtype), 0, BRIGHTNESS)     
     # binary = cv.threshold(brightened,57,255,cv.THRESH_BINARY)[1] # might remove: + cv.thresh_otsu
@@ -47,7 +45,9 @@ def fibrescope_process(frame):
     # morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
     # dilated = cv.dilate(morph_close,kernel)
 
-    return brightened
+    masked = cv.flip(masked,1) # horizontal flip
+    
+    return masked
 
 # def fish_undistort(ref_frame,checkboard):
 #     # checkboard = imread()
@@ -221,10 +221,10 @@ def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,num): # Lucas-Kanade,
     y_val_tensor = torch.stack(y_val_tensor, dim=0)
     ptfiles = os.path.dirname(savefilename) # directory of savefilename
     # num = max((int(num) for file in ptfiles for num in re.findall(r'\d+', os.path.splitext(file)[0])), default=0)+1
-    # torch.save(x_val_tensor, ptfiles+'/tensor_x_val'+pitchroll+str(num)+'.pt')
-    # torch.save(y_val_tensor, ptfiles+'/tensor_y_val'+pitchroll+str(num)+'.pt')
+    torch.save(x_val_tensor, ptfiles+'/tensor_x_val'+pitchroll+str(num)+'.pt')
+    torch.save(y_val_tensor, ptfiles+'/tensor_y_val'+pitchroll+str(num)+'.pt')
     LK_Zavg = pd.DataFrame({"x_vals":x_val_store, "y_vals":y_val_store, "z_vals":z_val_store}, dtype=float)
-    LK_Zavg.to_csv(ptfiles+'/imu-fusion-outputs_LK_Zavg'+pitchroll+str(num)+'.csv') # save csv file for z vals
+    LK_Zavg.to_csv(ptfiles+'/skins-'+pitchroll+str(num)+'.csv') # save csv file for z vals
 
 # def OF_GF(cap,ref_frame,img_process,savefilename,mask): # Gunnar-Farneback, dense optical flow
     # keeps getting killed... not sure why. 
@@ -335,11 +335,11 @@ def blobdetect(cap,img_process,savefilename):
             break
     
     # Tests plots: 
-    tst.oneD_plots(x_val_store)
-    plt.title('x_val')
-    tst.oneD_plots(y_val_store)
-    plt.title('y_val')
-    plt.show()
+    # tst.oneD_plots(x_val_store)
+    # plt.title('x_val')
+    # tst.oneD_plots(y_val_store)
+    # plt.title('y_val')
+    # plt.show()
     
     with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
         pickle.dump(data_history, file)
@@ -386,7 +386,7 @@ def main(img_process_selector,loadpath,inp_path,pitchroll,i):
     ref_frame = img_process(ref_frame) # was: (cap,ref_frame)
     cv.imshow('reference frame after filtering',ref_frame)
     # filenames to save output data: 
-    savefilename_LK = os.path.join('imu-fusion-outputs',inp_path+'_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    savefilename_LK = os.path.join('skins-test-outputs',inp_path+'_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
     # savefilename_LK = 'OF_outputs/trial.pkl'
     # savefilename_GF = os.path.join('OF_outputs','GF_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
     # savefilename_BD = os.path.join('OF_outputs/data4_feb2024','BD_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
@@ -432,24 +432,29 @@ def main(img_process_selector,loadpath,inp_path,pitchroll,i):
 
     cap.release()
     cv.destroyAllWindows()
-    plt.show()
+    
 if __name__ == '__main__':
 
-    img_process_selector = sys.argv[1] # f or w
+    img_process_selector = "f" #sys.argv[1] # f or w
     
-    inp_path = sys.argv[2] # pitchN or rollN where N = 1:8
+    inp_path = sys.argv[1] # pitchN or rollN where N = 1:8
     
+    inp_space = sys.argv[2] # spacing: 0-5 | 1-0 | 1-5
     # eg command: python opticalflow.py f pitch1
     
     length = len(inp_path)
     pitchroll, i = inp_path[:length-1], inp_path[length-1] # split number at the endfrom filename 
 
-    if pitchroll == "pitch":
-        pitchroll_path = "pitch_22-aug-2024/fibrescope"+i
-    elif pitchroll == "roll":
-        pitchroll_path = "roll_22-aug-2024/fibrescope"+i
-    else:
-        print("ERROR: Unrecognised input for pressure selector.")
+    pitchroll_path = glob.glob("data_collection_with_franka/B07LabTrials/skins-data/cm"+inp_space+"/"+pitchroll+"/fibrescope-*"+i+".mp4")[0]
+
+    # if pitchroll == "pitch":
+    #     pitchroll_path = "skins-data/cm"+inp_space+pitchroll+"/fibrescope"+i
+    # elif pitchroll == "roll":
+    #     pitchroll_path = "roll_22-aug-2024/fibrescope"+i
+    # else:
+    #     print("ERROR: Unrecognised input for pressure selector.")
     
-    inp_path_full = "data_collection_with_franka/B07LabTrials/imu-sensor-fusion2/"+pitchroll_path+".mp4"
+    inp_path_full = pitchroll_path
+    
     main(img_process_selector,inp_path_full,inp_path,pitchroll,i)
+    
