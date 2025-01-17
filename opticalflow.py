@@ -25,6 +25,8 @@ DESIREDHEIGHT = 480
 CONTRAST = 3
 BRIGHTNESS = 5
 
+inp_space = "" # global var
+
 # def fibrescope_process(cap,frame):
 def fibrescope_process(frame):
 
@@ -106,12 +108,35 @@ def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,num): # Lucas-Kanade,
     
     elif img_process == fibrescope_process:
         print('LK: Fibrescope')
-        feature_params = dict( maxCorners = 100, 
+        
+        if inp_space == "0-5":
+            print('Spacing: 0-5')
+            feature_params = dict( maxCorners = 300, 
+                                    qualityLevel = 0.01, # between 0 and 1. Lower numbers = higher quality level. 
+                                    minDistance = 5.0, # distance in pixels between points being monitored. 
+                                    blockSize = 3,
+                                    useHarrisDetector = False, # Shi-Tomasi better for corner detection than Harris for fibrescope. 
+                                    k = 0.04 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense.
+        elif inp_space == "1-0":
+            print('Spacing: 1-0')
+            feature_params = dict( maxCorners = 100, 
+                                    qualityLevel = 0.01, # between 0 and 1. Lower numbers = higher quality level. 
+                                    minDistance = 5.0, # distance in pixels between points being monitored. 
+                                    blockSize = 3,
+                                    useHarrisDetector = False, # Shi-Tomasi better for corner detection than Harris for fibrescope. 
+                                    k = 0.04 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense.
+        elif inp_space == "1-5":
+            print('Spacing: 1-5')
+            feature_params = dict( maxCorners = 50, 
                                 qualityLevel = 0.01, # between 0 and 1. Lower numbers = higher quality level. 
                                 minDistance = 5.0, # distance in pixels between points being monitored. 
                                 blockSize = 3,
                                 useHarrisDetector = False, # Shi-Tomasi better for corner detection than Harris for fibrescope. 
                                 k = 0.04 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense.
+        else: 
+            print("ERROR: Please enter a valid argument for pin spacing.")
+            exit()
+
         lk_params = dict( winSize = (45, 45),
                     maxLevel = 2,
                     criteria = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
@@ -128,7 +153,6 @@ def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,num): # Lucas-Kanade,
     color = np.random.randint(0, 255, (500, 3)) # Create some random colors 
     
     p0 = cv.goodFeaturesToTrack(ref_frame, mask = None, **feature_params) # Shi-Tomasi corner detection
-    # p0 = cv.cornerHarris(ref_frame, 10,10,0.3) # Harris corner detection, ERROR. figure out how to use this!! 
     # cv.imshow('ref frame temp',ref_frame)
     mask_OF = np.zeros_like(ref_frame)
 
@@ -206,10 +230,17 @@ def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,num): # Lucas-Kanade,
     # vid_writer.release()
 
     # test plots
-    tst.oneD_plots(x_val_store)
-    plt.title('x_val')
-    tst.oneD_plots(y_val_store)
-    plt.title('y_val')
+    plt.figure()
+    plt.plot(x_val_store, label='x_val')
+    plt.legend()
+    plt.figure()
+    plt.plot(y_val_store, label='y_val')
+    plt.legend()
+    # tst.oneD_plots(x_val_store)
+    # plt.title('x_val')
+    # plt.figure()
+    # tst.oneD_plots(y_val_store)
+    # plt.title('y_val')
     plt.show()
     
     # with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
@@ -235,7 +266,7 @@ def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,num): # Lucas-Kanade,
     # while True:
     #     ret, frame = cap.read()
     #     if not ret: break
-        
+    
     #     frame_filt = img_process(frame) # was: (cap,frame)
     #     flow = cv.calcOpticalFlowFarneback(ref_frame,frame_filt,None,pyr_scale=0.5,levels=2,winsize=3,iterations=2,poly_n=5,poly_sigma=1.1,flags=0) # what do these parameters mean?? 
     #     # explain - https://docs.opencv.org/3.0-beta/modules/video/doc/motion_analysis_and_object_tracking.html 
@@ -386,7 +417,7 @@ def main(img_process_selector,loadpath,inp_path,pitchroll,i):
     ref_frame = img_process(ref_frame) # was: (cap,ref_frame)
     cv.imshow('reference frame after filtering',ref_frame)
     # filenames to save output data: 
-    savefilename_LK = os.path.join('skins-test-outputs',inp_path+'_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    savefilename_LK = os.path.join('skins-test-outputs', inp_path+'_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
     # savefilename_LK = 'OF_outputs/trial.pkl'
     # savefilename_GF = os.path.join('OF_outputs','GF_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
     # savefilename_BD = os.path.join('OF_outputs/data4_feb2024','BD_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
@@ -434,12 +465,13 @@ def main(img_process_selector,loadpath,inp_path,pitchroll,i):
     cv.destroyAllWindows()
     
 if __name__ == '__main__':
-
+    
     img_process_selector = "f" #sys.argv[1] # f or w
     
     inp_path = sys.argv[1] # pitchN or rollN where N = 1:8
     
     inp_space = sys.argv[2] # spacing: 0-5 | 1-0 | 1-5
+    
     # eg command: python opticalflow.py f pitch1
     
     length = len(inp_path)

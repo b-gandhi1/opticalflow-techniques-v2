@@ -5,6 +5,7 @@ from scipy.spatial.transform import Rotation as R
 import matplotlib.pyplot as plt
 import sys
 import os
+import glob
 
 def euler_from_quaternion(x, y, z, w):
     """
@@ -96,8 +97,9 @@ def transform_franka_pillow(w,x,y,z,euler_seq):
     # back2quat = R.from_euler('xyz', trans_euler, degrees=False).as_quat()
     
     # return trans_euler[0],trans_euler[1],trans_euler[2]
-    return orig_euler[1],orig_euler[0]*(-1),orig_euler[2]*(-1) # transformations applied directly here
+    # return orig_euler[1],orig_euler[0]*(-1),orig_euler[2]*(-1) # transformations applied directly here
     # return back2quat[1], back2quat[2], back2quat[3]
+    return orig_euler[0],orig_euler[1],orig_euler[2] # no transformation applied here
 # convert data
 def convertdata(data,euler_seq): 
     rotations = pd.DataFrame(columns=['roll_x','pitch_y','yaw_z']) # dataframe init for saving output
@@ -131,18 +133,18 @@ def main(path, pitchroll, i, euler_seq):
     # load data > extract data
     
     # load ground truth
-    raw_quat_data = pd.read_csv(path, delimiter=',',dtype={'Franka Rx': float,'Franka Ry': float,'Franka Rz': float,'Franka Rw': float})   # , skiprows=[i for i in range(13)]
+    raw_quat_data = pd.read_csv(path, delimiter=',',dtype={'Franka Rx': float,'Franka Ry': float,'Franka Rz': float,'Franka Rw': float}, skiprows=[i for i in range(1,13)])   # , skiprows=[i for i in range(13)]
     
     # run conversions and save to csv
     euler_data = convertdata(raw_quat_data,euler_seq)
     
-    if pitchroll == "pitch":
-        pitchroll_dir = "LK_pitch2"
-    elif pitchroll == "roll":
-        pitchroll_dir = "LK_roll2"
+    # if pitchroll == "pitch":
+    #     pitchroll_dir = "LK_pitch2"
+    # elif pitchroll == "roll":
+    #     pitchroll_dir = "LK_roll2"
     
     # save as csv
-    euler_data.to_csv(os.path.join('imu-fusion-outputs', pitchroll_dir, pitchroll+i+'euler_gnd.csv'), header=['roll_x','pitch_y','yaw_z'])
+    euler_data.to_csv(os.path.join('data_collection_with_franka/B07LabTrials/skins-data/cm'+spacing, pitchroll, "fibrescope_"+i+'_euler_gnd.csv'), header=['roll_x','pitch_y','yaw_z'])
     
     # plots:
     plt_euler(euler_data.iloc[:,0],euler_data.iloc[:,1],euler_data.iloc[:,2])
@@ -151,20 +153,23 @@ def main(path, pitchroll, i, euler_seq):
     
 if __name__ == "__main__":
     path = sys.argv[1] # pitch1 or roll1
-    
-    length = len(path)
-    pitchroll, i = path[:length-1], path[length-1] # split number at the endfrom filename 
+    spacing = sys.argv[2]
 
+    length = len(path)
+    pitchroll, i = path[:length-1], path[-1] # split number at the endfrom filename 
+    
+    path_gen = glob.glob("data_collection_with_franka/B07LabTrials/skins-data/cm"+spacing+"/"+pitchroll+"/fibrescope*"+i+".csv")[0]
+    
     if pitchroll == "pitch":
-        dirs = "pitch_22-aug-2024/fibrescope"+i
+        # dirs = "pitch_22-aug-2024/fibrescope"+i
         euler_seq = "zxy"
     elif pitchroll == "roll":
-        dirs = "roll_22-aug-2024/fibrescope"+i
+        # dirs = "roll_22-aug-2024/fibrescope"+i
         euler_seq = "zyx"
     else:
         print("ERROR: Unrecognised input for pressure selector.")
-        exit()
+        sys.exit(1)
 
-    path_gen = "data_collection_with_franka/B07LabTrials/imu-sensor-fusion2/"+dirs+".csv"
+    # path_gen = "data_collection_with_franka/B07LabTrials/imu-sensor-fusion2/"+dirs+".csv"
     
-    main(path_gen, pitchroll, i, euler_seq) 
+    main(path_gen, pitchroll, i, euler_seq)
