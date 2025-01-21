@@ -49,23 +49,40 @@ def corr_calc(pitchrollN, pitchroll, num, spacing):
     plt.plot(norm_exp_data, label='Exp_dat')
     plt.plot(offset_gnd_dat, label='Gnd_dat')
     plt.legend()
-    plt.title(pitchrollN+" corr: "+str(corr_nonlin))
-    plt.show() 
+    plt.title(pitchrollN+" "+spacing+" corr: "+str(corr_nonlin))
+    # plt.show() 
 
-    print("Spearman correlation: ", corr_nonlin)
+    print("Spearman correlation ("+pitchrollN+" "+spacing+"): ", corr_nonlin)
     
     return corr_nonlin
 
-def main(pitchrollN, pitchroll, num, spacing): 
-    # for loop to go through all datasets
-    corr = corr_calc(pitchrollN, pitchroll, num, spacing)
-    # tabulate correlations in for loop 
+def main(): 
     
+    corr_df = pd.DataFrame(columns=['pitchrollN', 'Spacing', 'Correlation'], index=None)
+    
+    # for loop to go through all datasets
+    for spacing in ["0-5", "1-0", "1-5"]:
+        for pitchroll in ["pitch", "roll"]: 
+            for num in range(1,5+1):
+                num = str(num)
+                pitchrollN = pitchroll+num
+                corr = corr_calc(pitchrollN, pitchroll, num, spacing)
+                # print("Correlation for "+pitchrollN+" spacing "+spacing+" is: "+str(corr))
+                new_row = pd.DataFrame({'pitchrollN': pitchrollN, 'Spacing': spacing, 'Correlation': corr}, index=[0])
+                corr_df = pd.concat([corr_df, new_row], ignore_index=True)
+    
+    print(corr_df)
+    corr_df.to_csv('skins-test-outputs/skins-correlations.csv', index=False)
+    plt.show()
+        
 if __name__ == "__main__":
     
     # inputs: 
-    pitchrollN = sys.argv[1]
-    pitchroll, num = pitchrollN[0:len(pitchrollN)-1], pitchrollN[-1]
-    spacing = sys.argv[2]
-    
-    main(pitchrollN, pitchroll, num, spacing)
+    # pitchrollN = sys.argv[1]
+    # pitchroll, num = pitchrollN[0:len(pitchrollN)-1], pitchrollN[-1]
+    # spacing = sys.argv[2]
+    try: 
+        main()
+    except KeyboardInterrupt:
+        plt.close()
+        sys.exit(1)

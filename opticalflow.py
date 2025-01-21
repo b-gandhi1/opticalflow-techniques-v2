@@ -47,7 +47,7 @@ def fibrescope_process(frame):
     # morph_close = cv.morphologyEx(morph_open,cv.MORPH_CLOSE,kernel)
     # dilated = cv.dilate(morph_close,kernel)
 
-    masked = cv.flip(masked,1) # horizontal flip
+    # masked = cv.flip(masked,1) # horizontal flip
     
     return masked
 
