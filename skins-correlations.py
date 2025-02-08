@@ -4,6 +4,53 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import glob 
 import numpy as np
+FPS = 10 # Hz
+
+def hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data):
+    if pitchroll == "pitch":
+        window_len = int(time_period/4 * FPS)
+        print("Hysteresis test for pitch window: ", window_len)
+
+    elif pitchroll == "roll":
+        window_len = int(time_period/2 * FPS)
+        print("Hysteresis test for roll window: ", window_len)
+    else: 
+        print("ERROR: Invalid pitchroll")
+        sys.exit(1)
+    loading_df = pd.DataFrame(index=None)
+    unloading_df = pd.DataFrame(index=None)
+    new_load_row = pd.DataFrame(index=None)
+    new_unload_row = pd.DataFrame(index=None)
+    # seperate norm_exp_data using moving window sizes for loading and unloading
+    for i in range(0, len(norm_exp_data), window_len):
+        if i % 2 == 0:
+            new_load_row = pd.DataFrame([norm_exp_data[i:i+window_len]], index=None)
+        else:
+            new_unload_row = pd.DataFrame([norm_exp_data[i:i+window_len]], index=None)
+            
+        loading_df = pd.concat([loading_df, new_load_row], ignore_index=True, axis=0)
+        unloading_df = pd.concat([unloading_df, new_unload_row], ignore_index=True, axis=0)
+    
+    t_load = np.linspace(0, time_period, loading_df.shape[0])
+    t_unload = np.linspace(0, time_period, unloading_df.shape[0])
+    # loading_df = loading_df.T #transpose
+    loading_avg = loading_df.mean(axis=1)
+    # unloading_df = unloading_df.T
+    unloading_avg = unloading_df.mean(axis=1)
+    print("loading_df shape: ", loading_df.shape, "avg shape: ", loading_avg.shape)
+    print("unloading_df shape: ", unloading_df.shape, "avg shape: ", unloading_avg.shape)
+    # test plots for loading and unloading
+    plt.figure()
+    # plt.plot(loading_df.iloc[:unloading_df.shape[0], :unloading_df.shape[1]], unloading_df)
+    plt.plot(t_load, loading_avg, label='loading', color='b', linestyle='--')
+    plt.plot(t_unload, unloading_avg, label='unloading', color='r', linestyle='--')
+    plt.legend()
+    plt.title("loading V unloading")
+    # print("loading_df shape: ", loading_df.shape)
+    # print("unloading_df shape: ", unloading_df.shape)
+    # save loading and unloading data
+    # loading_df.to_csv('skins-test-outputs/hysteresis/cm'+spacing+'/'+pitchrollN+'-loading.csv', index=False)
+    # unloading_df.to_csv('skins-test-outputs/hysteresis/cm'+spacing+'/'+pitchrollN+'-unloading.csv', index=False)
 
 def corr_calc(pitchrollN, pitchroll, num, spacing): 
 
@@ -20,11 +67,13 @@ def corr_calc(pitchrollN, pitchroll, num, spacing):
     if pitchroll == "pitch":
         exp_ax = 'x_vals'
         gnd_ax = 'roll_x'
-        offset_gnd = 58.0
+        offset_gnd = 37.9
+        time_period = 12.5
     elif pitchroll == "roll":
         exp_ax = 'y_vals'
         gnd_ax = 'pitch_y'
         offset_gnd = 46.0 
+        time_period = 5.0
         gnd_data_all[gnd_ax] = gnd_data_all[gnd_ax] * (-1)
         
     else:
@@ -48,28 +97,33 @@ def corr_calc(pitchrollN, pitchroll, num, spacing):
     
     mean_abs_error = abs(offset_gnd_dat - norm_exp_data).mean() # MAE
     
+    motion_range = norm_exp_data.max() - norm_exp_data.min() # peak to peak range of motion
+    resolution = motion_range/(time_period*FPS) # range of motion / number of samples in a time period
+    
+    hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data)
+    
     # test plots
-    t = np.linspace(0, 60, len(norm_exp_data))
-    plt.figure()
-    plt.plot(t,norm_exp_data, label='Exp_dat')
-    plt.plot(t,offset_gnd_dat, label='Gnd_dat')
-    plt.ylabel('Angle (degrees)')
-    plt.xlabel('Time (s)')
-    plt.legend()
-    plt.title(pitchrollN+" "+spacing+" corr: "+str(corr_nonlin)+", mean abs error: "+str(mean_abs_error))
+    # t = np.linspace(0, 60, len(norm_exp_data))
+    # plt.figure()
+    # plt.plot(t,norm_exp_data, label='Exp_dat')
+    # plt.plot(t,offset_gnd_dat, label='Gnd_dat')
+    # plt.ylabel('Angle (degrees)')
+    # plt.xlabel('Time (s)')
+    # plt.legend()
+    # plt.title(pitchrollN+" "+spacing+" corr: "+str(corr_nonlin)+", mean abs error: "+str(mean_abs_error))
     # plt.show() 
 
     # print("Spearman correlation ("+pitchrollN+" "+spacing+"): ", corr_nonlin)
     
     
-    return corr_nonlin, mean_abs_error
+    return corr_nonlin, mean_abs_error, resolution
 
 def cross_corr():
 
     df = pd.DataFrame(columns=['Pitch|Roll N','Corr w 5mm', 'Corr w 15mm'], index=None)
     for skinspitchroll in ["skins-pitch", "skins-roll"]:
         spacing10 = glob.glob("skins-test-outputs/cm1-0/**/"+skinspitchroll+"*.csv") # default skin
-        print(spacing10)
+        # print(spacing10)
         if skinspitchroll == "skins-pitch":
             ax = "x_vals"
         elif skinspitchroll == "skins-roll":
@@ -80,7 +134,7 @@ def cross_corr():
             
         for i in range(0,5):
             def_dat = pd.read_csv(spacing10[i], delimiter=',', usecols={ax}, dtype={ax: float}, skiprows=[j for j in range(1,13)])
-            print("def dat: ", def_dat.size, ' ',i)
+            # print("def dat: ", def_dat.size, ' ',i)
             for k in range(1,5+1):            
                 compareN5 = glob.glob("skins-test-outputs/cm0-5/**/"+skinspitchroll+str(k)+".csv")[0]
                 # print("compareN5: ",compareN5)
@@ -100,7 +154,7 @@ def cross_corr():
     
 def main(): 
     
-    df = pd.DataFrame(columns=['pitchrollN', 'Spacing', 'Correlation', 'MAE'], index=None)
+    df = pd.DataFrame(columns=['pitchrollN', 'Spacing', 'Correlation', 'MAE', 'Resolution'], index=None)
     
     # for loop to go through all datasets
     for spacing in ["0-5", "1-0", "1-5"]:
@@ -108,14 +162,14 @@ def main():
             for num in range(1,5+1):
                 num = str(num)
                 pitchrollN = pitchroll+num
-                corr, mean_abs_err = corr_calc(pitchrollN, pitchroll, num, spacing)
+                corr, mean_abs_err, resolution = corr_calc(pitchrollN, pitchroll, num, spacing)
                 # print("Correlation for "+pitchrollN+" spacing "+spacing+" is: "+str(corr))
-                new_row = pd.DataFrame({'pitchrollN': pitchrollN, 'Spacing': spacing, 'Correlation': corr, 'MAE': mean_abs_err}, index=[0])
+                new_row = pd.DataFrame({'pitchrollN': pitchrollN, 'Spacing': spacing, 'Correlation': corr, 'MAE': mean_abs_err, 'Resolution': resolution}, index=[0])
                 df = pd.concat([df, new_row], ignore_index=True)
     
     # df.to_csv('skins-test-outputs/skins-correlations.csv', index=False) # uncomment to save new csv    
     coss_corr_df = cross_corr() # spacings
-    coss_corr_df.to_csv('skins-test-outputs/skins-cross-correlations.csv', index=False) # uncomment to save new csv
+    # coss_corr_df.to_csv('skins-test-outputs/skins-cross-correlations.csv', index=False) # uncomment to save new csv
     plt.show()
 
 if __name__ == "__main__":
