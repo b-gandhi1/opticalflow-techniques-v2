@@ -6,7 +6,7 @@ import glob
 import numpy as np
 FPS = 10 # Hz
 
-def hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data):
+def hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, offset_gnd_dat):
     if pitchroll == "pitch":
         window_len = int(time_period/4 * FPS)
         print("Hysteresis test for pitch window: ", window_len)
@@ -18,21 +18,30 @@ def hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data):
         print("ERROR: Invalid pitchroll")
         sys.exit(1)
     loading_df = pd.DataFrame(index=None)
+    gnd_load_df = pd.DataFrame()
     unloading_df = pd.DataFrame(index=None)
+    gnd_unload_df = pd.DataFrame()
     new_load_row = pd.DataFrame(index=None)
+    gnd_new_load_row = pd.DataFrame()
     new_unload_row = pd.DataFrame(index=None)
+    gnd_new_unload_row = pd.DataFrame()
     # seperate norm_exp_data using moving window sizes for loading and unloading
+    check=0
     for i in range(0, len(norm_exp_data), window_len):
-        if i % 2 == 0:
+        if check % 2 == 0:
             new_load_row = pd.DataFrame([norm_exp_data[i:i+window_len]], index=None)
+            gnd_new_load_row = pd.DataFrame([offset_gnd_dat[i:i+window_len]], index=None)
         else:
             new_unload_row = pd.DataFrame([norm_exp_data[i:i+window_len]], index=None)
+            gnd_new_unload_row = pd.DataFrame([offset_gnd_dat[i:i+window_len]], index=None)
             
         loading_df = pd.concat([loading_df, new_load_row], ignore_index=True, axis=0)
+        gnd_load_df = pd.concat([gnd_load_df, gnd_new_load_row], ignore_index=True, axis=0)
         unloading_df = pd.concat([unloading_df, new_unload_row], ignore_index=True, axis=0)
-    
-    t_load = np.linspace(0, time_period, loading_df.shape[0])
-    t_unload = np.linspace(0, time_period, unloading_df.shape[0])
+        gnd_unload_df = pd.concat([gnd_unload_df, gnd_new_unload_row], ignore_index=True, axis=0)
+        check+=1
+    # t_load = np.linspace(0, time_period, loading_df.shape[0])
+    # t_unload = np.linspace(0, time_period, unloading_df.shape[0])
     # loading_df = loading_df.T #transpose
     loading_avg = loading_df.mean(axis=1)
     # unloading_df = unloading_df.T
@@ -40,17 +49,18 @@ def hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data):
     print("loading_df shape: ", loading_df.shape, "avg shape: ", loading_avg.shape)
     print("unloading_df shape: ", unloading_df.shape, "avg shape: ", unloading_avg.shape)
     # test plots for loading and unloading
-    plt.figure()
+    # plt.figure()
     # plt.plot(loading_df.iloc[:unloading_df.shape[0], :unloading_df.shape[1]], unloading_df)
-    plt.plot(t_load, loading_avg, label='loading', color='b', linestyle='--')
-    plt.plot(t_unload, unloading_avg, label='unloading', color='r', linestyle='--')
-    plt.legend()
-    plt.title("loading V unloading")
-    # print("loading_df shape: ", loading_df.shape)
-    # print("unloading_df shape: ", unloading_df.shape)
+    # plt.plot(t_load, loading_avg, label='loading', color='b', linestyle='--')
+    # plt.plot(t_unload, unloading_avg, label='unloading', color='r', linestyle='--')
+    # plt.legend()
+    # plt.title("loading V unloading")
+
     # save loading and unloading data
-    # loading_df.to_csv('skins-test-outputs/hysteresis/cm'+spacing+'/'+pitchrollN+'-loading.csv', index=False)
-    # unloading_df.to_csv('skins-test-outputs/hysteresis/cm'+spacing+'/'+pitchrollN+'-unloading.csv', index=False)
+    loading_df.to_csv('skins-test-outputs/hysteresis/cm'+spacing+'/'+pitchrollN+'-loading.csv', index=False)
+    gnd_load_df.to_csv('skins-test-outputs/hysteresis/cm'+spacing+'/'+pitchrollN+'-gnd-loading.csv', index=False)
+    unloading_df.to_csv('skins-test-outputs/hysteresis/cm'+spacing+'/'+pitchrollN+'-unloading.csv', index=False)
+    gnd_unload_df.to_csv('skins-test-outputs/hysteresis/cm'+spacing+'/'+pitchrollN+'-gnd-unloading.csv', index=False)
 
 def corr_calc(pitchrollN, pitchroll, num, spacing): 
 
@@ -100,16 +110,19 @@ def corr_calc(pitchrollN, pitchroll, num, spacing):
     motion_range = norm_exp_data.max() - norm_exp_data.min() # peak to peak range of motion
     resolution = motion_range/(time_period*FPS) # range of motion / number of samples in a time period
     
-    hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data)
+    hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, offset_gnd_dat)
     
     # test plots
-    # t = np.linspace(0, 60, len(norm_exp_data))
-    # plt.figure()
-    # plt.plot(t,norm_exp_data, label='Exp_dat')
-    # plt.plot(t,offset_gnd_dat, label='Gnd_dat')
-    # plt.ylabel('Angle (degrees)')
-    # plt.xlabel('Time (s)')
-    # plt.legend()
+    t = np.linspace(0, 60, len(norm_exp_data))
+    fig, ax = plt.subplots()
+    ax.plot(t,norm_exp_data, label='Exp_dat')
+    ax.plot(t,offset_gnd_dat, label='Gnd_dat')
+    ax.set_ylabel('Angle (degrees)')
+    ax.set_xlabel('Time (s)')
+    ax.legend()
+    fig.canvas.manager.set_window_title(pitchrollN+" "+spacing+" corr: "+str(corr_nonlin)+", mean abs error: "+str(mean_abs_error))
+
+    fig.suptitle("Correlation: "+str(round(corr_nonlin,2))+", MAE: "+str(round(mean_abs_error,2)))
     # plt.title(pitchrollN+" "+spacing+" corr: "+str(corr_nonlin)+", mean abs error: "+str(mean_abs_error))
     # plt.show() 
 
