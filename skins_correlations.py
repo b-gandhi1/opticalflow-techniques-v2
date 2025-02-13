@@ -7,33 +7,42 @@ import numpy as np
 FPS = 10 # Hz
 
 def hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, offset_gnd_dat):
+    # print("shapes: ", norm_exp_data.shape, offset_gnd_dat.shape)
+    # breakpoint()
+    offset_gnd_dat = offset_gnd_dat.values # convert to numpy array
+    
     if pitchroll == "pitch":
         window_len = int(time_period/4 * FPS)
-        print("Hysteresis test for pitch window: ", window_len)
+        # print("Hysteresis test for pitch window: ", window_len)
 
     elif pitchroll == "roll":
         window_len = int(time_period/2 * FPS)
-        print("Hysteresis test for roll window: ", window_len)
+        # print("Hysteresis test for roll window: ", window_len)
     else: 
         print("ERROR: Invalid pitchroll")
         sys.exit(1)
     loading_df = pd.DataFrame(index=None)
-    gnd_load_df = pd.DataFrame()
+    gnd_load_df = pd.DataFrame(index=None)
     unloading_df = pd.DataFrame(index=None)
-    gnd_unload_df = pd.DataFrame()
+    gnd_unload_df = pd.DataFrame(index=None)
     new_load_row = pd.DataFrame(index=None)
-    gnd_new_load_row = pd.DataFrame()
+    gnd_new_load_row = pd.DataFrame(index=None)
     new_unload_row = pd.DataFrame(index=None)
-    gnd_new_unload_row = pd.DataFrame()
+    gnd_new_unload_row = pd.DataFrame(index=None)
     # seperate norm_exp_data using moving window sizes for loading and unloading
     check=0
     for i in range(0, len(norm_exp_data), window_len):
-        if check % 2 == 0:
+        if check % 2 == 0: # loading data+
+            # print('0 modulus')
+            # breakpoint()
             new_load_row = pd.DataFrame([norm_exp_data[i:i+window_len]], index=None)
             gnd_new_load_row = pd.DataFrame([offset_gnd_dat[i:i+window_len]], index=None)
-        else:
+        
+        else: # unloading data
+            # print('1 modulus')
+            # breakpoint()
             new_unload_row = pd.DataFrame([norm_exp_data[i:i+window_len]], index=None)
-            gnd_new_unload_row = pd.DataFrame([offset_gnd_dat[i:i+window_len]], index=None)
+            gnd_new_unload_row = pd.DataFrame([offset_gnd_dat[i+1:i+1+window_len]], index=None)
             
         loading_df = pd.concat([loading_df, new_load_row], ignore_index=True, axis=0)
         gnd_load_df = pd.concat([gnd_load_df, gnd_new_load_row], ignore_index=True, axis=0)
@@ -46,8 +55,8 @@ def hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, 
     loading_avg = loading_df.mean(axis=1)
     # unloading_df = unloading_df.T
     unloading_avg = unloading_df.mean(axis=1)
-    print("loading_df shape: ", loading_df.shape, "avg shape: ", loading_avg.shape)
-    print("unloading_df shape: ", unloading_df.shape, "avg shape: ", unloading_avg.shape)
+    # print("loading_df shape: ", loading_df.shape, "avg shape: ", loading_avg.shape)
+    # print("unloading_df shape: ", unloading_df.shape, "avg shape: ", unloading_avg.shape)
     # test plots for loading and unloading
     # plt.figure()
     # plt.plot(loading_df.iloc[:unloading_df.shape[0], :unloading_df.shape[1]], unloading_df)
