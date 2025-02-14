@@ -49,27 +49,36 @@ def hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, 
         unloading_df = pd.concat([unloading_df, new_unload_row], ignore_index=True, axis=0)
         gnd_unload_df = pd.concat([gnd_unload_df, gnd_new_unload_row], ignore_index=True, axis=0)
         check+=1
-    # t_load = np.linspace(0, time_period, loading_df.shape[0])
-    # t_unload = np.linspace(0, time_period, unloading_df.shape[0])
-    # loading_df = loading_df.T #transpose
-    loading_avg = loading_df.mean(axis=1)
-    # unloading_df = unloading_df.T
-    unloading_avg = unloading_df.mean(axis=1)
+    t_load = np.linspace(0, time_period, loading_df.shape[1])
+    t_unload = np.linspace(0, time_period, unloading_df.shape[1])
+    loading_avg = loading_df.mean(axis=0)
+    load_neg_err = loading_df.mean(axis=0) - loading_df.min(axis=0)
+    load_pos_err = loading_df.max(axis=0) - loading_df.mean(axis=0)
+    gnd_load_avg = gnd_load_df.mean(axis=0)
+    unloading_avg = unloading_df.mean(axis=0)
+    unload_neg_err = unloading_df.mean(axis=0) - unloading_df.min(axis=0)
+    unload_pos_err = unloading_df.max(axis=0) - unloading_df.mean(axis=0)
+    gnd_unload_avg = gnd_unload_df.mean(axis=0)
     # print("loading_df shape: ", loading_df.shape, "avg shape: ", loading_avg.shape)
     # print("unloading_df shape: ", unloading_df.shape, "avg shape: ", unloading_avg.shape)
     # test plots for loading and unloading
-    # plt.figure()
-    # plt.plot(loading_df.iloc[:unloading_df.shape[0], :unloading_df.shape[1]], unloading_df)
-    # plt.plot(t_load, loading_avg, label='loading', color='b', linestyle='--')
-    # plt.plot(t_unload, unloading_avg, label='unloading', color='r', linestyle='--')
-    # plt.legend()
-    # plt.title("loading V unloading")
-
+    fig,ax = plt.subplots()
+    plt.errorbar(t_load, loading_avg, yerr=[load_neg_err, load_pos_err], label='loading', color='b', marker='*')
+    plt.errorbar(t_unload, unloading_avg, yerr=[unload_neg_err, unload_pos_err], label='unloading', color='r', marker='o')
+    plt.plot(t_load, gnd_load_avg, label='gnd loading', color='g', linestyle='--')
+    plt.plot(t_unload, gnd_unload_avg, label='gnd unloading', color='y', linestyle='--')
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Angle (degrees)')
+    fig.canvas.manager.set_window_title(pitchrollN+" "+spacing+" cm - hysteresis")
+    plt.legend()
+    
+    errbar_dat = pd.DataFrame({'Time': t_load, 'Loading_avg': loading_avg, 'Loading_neg_err': load_neg_err, 'Loading_pos_err': load_pos_err, 'Gnd_load_avg': gnd_load_avg ,'Unloading_avg': unloading_avg, 'Unloading_neg_err': unload_neg_err, 'Unloading_pos_err': unload_pos_err, 'Gnd_unload_avg': gnd_unload_avg})
     # save loading and unloading data
     loading_df.to_csv('skins-test-outputs/hysteresis/cm'+spacing+'/'+pitchrollN+'-loading.csv', index=False)
     gnd_load_df.to_csv('skins-test-outputs/hysteresis/cm'+spacing+'/'+pitchrollN+'-gnd-loading.csv', index=False)
     unloading_df.to_csv('skins-test-outputs/hysteresis/cm'+spacing+'/'+pitchrollN+'-unloading.csv', index=False)
     gnd_unload_df.to_csv('skins-test-outputs/hysteresis/cm'+spacing+'/'+pitchrollN+'-gnd-unloading.csv', index=False)
+    errbar_dat.to_csv('skins-test-outputs/hysteresis/cm'+spacing+'/'+pitchrollN+'-errbar.csv', index=False)
 
 def corr_calc(pitchrollN, pitchroll, num, spacing): 
 
@@ -87,7 +96,7 @@ def corr_calc(pitchrollN, pitchroll, num, spacing):
         exp_ax = 'x_vals'
         gnd_ax = 'roll_x'
         offset_gnd = 37.9
-        time_period = 12.5
+        time_period = 12.3
     elif pitchroll == "roll":
         exp_ax = 'y_vals'
         gnd_ax = 'pitch_y'
@@ -122,18 +131,16 @@ def corr_calc(pitchrollN, pitchroll, num, spacing):
     hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, offset_gnd_dat)
     
     # test plots
-    t = np.linspace(0, 60, len(norm_exp_data))
-    fig, ax = plt.subplots()
-    ax.plot(t,norm_exp_data, label='Exp_dat')
-    ax.plot(t,offset_gnd_dat, label='Gnd_dat')
-    ax.set_ylabel('Angle (degrees)')
-    ax.set_xlabel('Time (s)')
-    ax.legend()
-    fig.canvas.manager.set_window_title(pitchrollN+" "+spacing+" corr: "+str(corr_nonlin)+", mean abs error: "+str(mean_abs_error))
+    # t = np.linspace(0, 60, len(norm_exp_data))
+    # fig, ax = plt.subplots()
+    # ax.plot(t,norm_exp_data, label='Exp_dat')
+    # ax.plot(t,offset_gnd_dat, label='Gnd_dat')
+    # ax.set_ylabel('Angle (degrees)')
+    # ax.set_xlabel('Time (s)')
+    # ax.legend()
+    # fig.canvas.manager.set_window_title(pitchrollN+" "+spacing+" corr: "+str(corr_nonlin)+", mean abs error: "+str(mean_abs_error))
 
-    fig.suptitle("Correlation: "+str(round(corr_nonlin,2))+", MAE: "+str(round(mean_abs_error,2)))
-    # plt.title(pitchrollN+" "+spacing+" corr: "+str(corr_nonlin)+", mean abs error: "+str(mean_abs_error))
-    # plt.show() 
+    # fig.suptitle("Correlation: "+str(round(corr_nonlin,2))+", MAE: "+str(round(mean_abs_error,2)))
 
     # print("Spearman correlation ("+pitchrollN+" "+spacing+"): ", corr_nonlin)
     
