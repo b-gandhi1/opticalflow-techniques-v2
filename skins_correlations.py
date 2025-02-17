@@ -6,6 +6,38 @@ import glob
 import numpy as np
 FPS = 10 # Hz
 
+def hysteresis_win_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, offset_gnd_dat):
+    # print("shapes: ", norm_exp_data.shape, offset_gnd_dat.shape)
+    # breakpoint()
+    offset_gnd_dat = offset_gnd_dat.values # convert to numpy array
+    window_len = int(time_period * FPS)
+
+    cycle_df = pd.DataFrame(index=None)
+    new_cyc = pd.DataFrame(index=None)
+    gnd_cycle_df = pd.DataFrame(index=None)
+    new_gnd_cyc = pd.DataFrame(index=None)
+    check=0
+    for i in range(0, len(norm_exp_data), window_len):
+        new_cyc = pd.DataFrame([norm_exp_data[i:i+window_len]], index=None)
+        new_gnd_cyc = pd.DataFrame([offset_gnd_dat[i:i+window_len]], index=None)
+        
+        cycle_df = pd.concat([cycle_df, new_cyc], ignore_index=True, axis=0)
+        gnd_cycle_df = pd.concat([gnd_cycle_df, new_gnd_cyc], ignore_index=True, axis=0)
+        check+=1
+    t_cycle = np.linspace(0, time_period, cycle_df.shape[1])
+    cycle_avg = cycle_df.mean(axis=0)
+    cycle_neg_err = cycle_df.mean(axis=0) - cycle_df.min(axis=0)
+    cycle_pos_err = cycle_df.max(axis=0) - cycle_df.mean(axis=0)
+    gnd_cycle_avg = gnd_cycle_df.mean(axis=0)
+    
+    fig,ax = plt.subplots()
+    plt.errorbar(t_cycle, cycle_avg, fmt = 'bo', yerr=[cycle_neg_err, cycle_pos_err], label='MCP')
+    plt.plot(t_cycle, gnd_cycle_avg, 'g--', label='GND')
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Angle (degrees)')
+    fig.canvas.manager.set_window_title(pitchrollN+" "+spacing+" cm - hysteresis")
+    plt.legend()
+
 def hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, offset_gnd_dat):
     # print("shapes: ", norm_exp_data.shape, offset_gnd_dat.shape)
     # breakpoint()
@@ -128,7 +160,12 @@ def corr_calc(pitchrollN, pitchroll, num, spacing):
     motion_range = norm_exp_data.max() - norm_exp_data.min() # peak to peak range of motion
     resolution = motion_range/(time_period*FPS) # range of motion / number of samples in a time period
     
-    hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, offset_gnd_dat)
+    
+    time_offset = 0
+    exp_dat = norm_exp_data[time_offset:]
+    gnd_dat = offset_gnd_dat[time_offset:]
+    # hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, offset_gnd_dat)
+    hysteresis_win_test(pitchrollN, spacing, pitchroll, time_period, exp_dat, gnd_dat)
     
     # test plots
     # t = np.linspace(0, 60, len(norm_exp_data))
