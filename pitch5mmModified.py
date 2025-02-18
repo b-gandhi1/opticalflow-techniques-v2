@@ -12,16 +12,14 @@ pitchroll, spacing = "pitch", "0-5"
 threshold = 9.0 # +- 10 degrees range of motion
 
 def hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, offset_gnd_dat):
-    if pitchroll == "pitch":
-        window_len = int(time_period/4 * FPS)
-        # print("Hysteresis test for pitch window: ", window_len)
 
-    elif pitchroll == "roll":
-        window_len = int(time_period/2 * FPS)
-        # print("Hysteresis test for roll window: ", window_len)
-    else: 
-        print("ERROR: Invalid pitchroll")
-        sys.exit(1)
+    # parameters for pitch only. 
+    time_offset = 55
+    window_len = int(time_period/4 * FPS)
+    norm_exp_data = abs(norm_exp_data[time_offset:])
+    offset_gnd_dat = abs(offset_gnd_dat[time_offset:])
+    # print("Hysteresis test for pitch window: ", window_len)
+
     loading_df = pd.DataFrame(index=None)
     gnd_load_df = pd.DataFrame(index=None)
     unloading_df = pd.DataFrame(index=None)
@@ -49,8 +47,8 @@ def hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, 
         unloading_df = pd.concat([unloading_df, new_unload_row], ignore_index=True, axis=0)
         gnd_unload_df = pd.concat([gnd_unload_df, gnd_new_unload_row], ignore_index=True, axis=0)
         check+=1
-    t_load = np.linspace(0, time_period, loading_df.shape[1])
-    t_unload = np.linspace(0, time_period, unloading_df.shape[1])
+    t_load = np.linspace(0, loading_df.shape[1]/FPS, loading_df.shape[1])
+    t_unload = np.linspace(0, unloading_df.shape[1]/FPS, unloading_df.shape[1])
     loading_avg = loading_df.mean(axis=0)
     load_neg_err = loading_df.mean(axis=0) - loading_df.min(axis=0)
     load_pos_err = loading_df.max(axis=0) - loading_df.mean(axis=0)
@@ -60,15 +58,20 @@ def hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, 
     unload_pos_err = unloading_df.max(axis=0) - unloading_df.mean(axis=0)
     gnd_unload_avg = gnd_unload_df.mean(axis=0)
 
-    fig,ax = plt.subplots()
-    plt.errorbar(t_load, loading_avg, yerr=[load_neg_err, load_pos_err], label='loading', color='b', marker='*')
-    plt.errorbar(t_unload, unloading_avg, yerr=[unload_neg_err, unload_pos_err], label='unloading', color='r', marker='o')
-    plt.plot(t_load, gnd_load_avg, label='gnd loading', color='g', linestyle='--')
-    plt.plot(t_unload, gnd_unload_avg, label='gnd unloading', color='y', linestyle='--')
-    ax.set_xlabel('Time (s)')
-    ax.set_ylabel('Angle (degrees)')
+    fig,(ax1,ax2) = plt.subplots(2,1)
+    ax1.errorbar(t_load, loading_avg, fmt = 'b*', label='MCP')
+    ax2.errorbar(t_unload, unloading_avg, fmt = 'bo', label='unloading')
+    ax1.plot(t_load, gnd_load_avg, 'b--', label='Gnd')
+    ax2.plot(t_unload, gnd_unload_avg, 'b--',  label='Gnd')
+    ax1.set_xlabel('Time (s)')
+    ax1.set_ylabel('Loading Angle (deg)')
+    ax1.legend()
+    ax2.set_xlabel('Time (s)')
+    ax2.set_ylabel('Unloading Angle (deg)')
+    ax2.legend()
+    
+
     fig.canvas.manager.set_window_title(pitchrollN+" "+spacing+" cm - hysteresis")
-    plt.legend()
     # plt.show()
     
     errbar_dat = pd.DataFrame({'Time': t_load, 'Loading_avg': loading_avg, 'Loading_neg_err': load_neg_err, 'Loading_pos_err': load_pos_err, 'Gnd_load_avg': gnd_load_avg ,'Unloading_avg': unloading_avg, 'Unloading_neg_err': unload_neg_err, 'Unloading_pos_err': unload_pos_err, 'Gnd_unload_avg': gnd_unload_avg})
@@ -113,7 +116,7 @@ def main():
         # print("Correlation for "+pitchrollN+" spacing "+spacing+" is: "+str(corr))
         new_row = pd.DataFrame({'pitchrollN': pitchrollN, 'Spacing': spacing, 'Correlation': corr_nonlin, 'MAE': mean_abs_error}, index=[0])
         df = pd.concat([df, new_row], ignore_index=True)
-    df.to_csv('pitch5mmModified.csv', index=False)
+    df.to_csv('skins-test-outputs/pitch5mmModified-corr.csv', index=False)
     print(df)
     plt.show()
 

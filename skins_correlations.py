@@ -44,11 +44,17 @@ def hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, 
     offset_gnd_dat = offset_gnd_dat.values # convert to numpy array
     
     if pitchroll == "pitch":
+        time_offset = 55
         window_len = int(time_period/4 * FPS)
+        norm_exp_data = abs(norm_exp_data[time_offset:])
+        offset_gnd_dat = abs(offset_gnd_dat[time_offset:])
         # print("Hysteresis test for pitch window: ", window_len)
 
     elif pitchroll == "roll":
+        time_offset = 35
         window_len = int(time_period/2 * FPS)
+        norm_exp_data = norm_exp_data[time_offset:]
+        offset_gnd_dat = offset_gnd_dat[time_offset:]
         # print("Hysteresis test for roll window: ", window_len)
     else: 
         print("ERROR: Invalid pitchroll")
@@ -81,8 +87,8 @@ def hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, 
         unloading_df = pd.concat([unloading_df, new_unload_row], ignore_index=True, axis=0)
         gnd_unload_df = pd.concat([gnd_unload_df, gnd_new_unload_row], ignore_index=True, axis=0)
         check+=1
-    t_load = np.linspace(0, time_period, loading_df.shape[1])
-    t_unload = np.linspace(0, time_period, unloading_df.shape[1])
+    t_load = np.linspace(0, window_len/FPS, loading_df.shape[1])
+    t_unload = np.linspace(0, window_len/FPS, unloading_df.shape[1])
     loading_avg = loading_df.mean(axis=0)
     load_neg_err = loading_df.mean(axis=0) - loading_df.min(axis=0)
     load_pos_err = loading_df.max(axis=0) - loading_df.mean(axis=0)
@@ -94,15 +100,22 @@ def hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, 
     # print("loading_df shape: ", loading_df.shape, "avg shape: ", loading_avg.shape)
     # print("unloading_df shape: ", unloading_df.shape, "avg shape: ", unloading_avg.shape)
     # test plots for loading and unloading
-    fig,ax = plt.subplots()
-    plt.errorbar(t_load, loading_avg, yerr=[load_neg_err, load_pos_err], label='loading', color='b', marker='*')
-    plt.errorbar(t_unload, unloading_avg, yerr=[unload_neg_err, unload_pos_err], label='unloading', color='r', marker='o')
-    plt.plot(t_load, gnd_load_avg, label='gnd loading', color='g', linestyle='--')
-    plt.plot(t_unload, gnd_unload_avg, label='gnd unloading', color='y', linestyle='--')
-    ax.set_xlabel('Time (s)')
-    ax.set_ylabel('Angle (degrees)')
+    fig,(ax1,ax2) = plt.subplots(2,1)
+    # ax1.errorbar(t_load, loading_avg, yerr=[load_neg_err, load_pos_err], fmt = 'b*',label='MCP')
+    ax1.errorbar(t_load, loading_avg, fmt = 'b*',label='MCP')
+    ax1.plot(t_load, gnd_load_avg, 'b--', label='gnd')
+    ax1.set_xlabel('Time (s)')
+    ax1.set_ylabel('Loading Angle (deg)')
+    ax1.legend()
+
+    # ax2.errorbar(t_unload, unloading_avg, yerr=[unload_neg_err, unload_pos_err], fmt = 'bo', label='MCP')
+    ax2.errorbar(t_unload, unloading_avg, fmt = 'bo', label='MCP')
+    ax2.plot(t_unload, gnd_unload_avg, 'b--', label='gnd')
+    ax2.set_xlabel('Time (s)')
+    ax2.set_ylabel('Unloading Angle (deg)')
+    ax2.legend()
+
     fig.canvas.manager.set_window_title(pitchrollN+" "+spacing+" cm - hysteresis")
-    plt.legend()
     
     errbar_dat = pd.DataFrame({'Time': t_load, 'Loading_avg': loading_avg, 'Loading_neg_err': load_neg_err, 'Loading_pos_err': load_pos_err, 'Gnd_load_avg': gnd_load_avg ,'Unloading_avg': unloading_avg, 'Unloading_neg_err': unload_neg_err, 'Unloading_pos_err': unload_pos_err, 'Gnd_unload_avg': gnd_unload_avg})
     # save loading and unloading data
@@ -161,11 +174,13 @@ def corr_calc(pitchrollN, pitchroll, num, spacing):
     resolution = motion_range/(time_period*FPS) # range of motion / number of samples in a time period
     
     
-    time_offset = 0
-    exp_dat = norm_exp_data[time_offset:]
-    gnd_dat = offset_gnd_dat[time_offset:]
-    # hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, offset_gnd_dat)
-    hysteresis_win_test(pitchrollN, spacing, pitchroll, time_period, exp_dat, gnd_dat)
+    
+    hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, offset_gnd_dat)
+    
+    # time_offset = 55
+    # exp_dat = abs(norm_exp_data[time_offset:])
+    # gnd_dat = offset_gnd_dat[time_offset:]
+    # hysteresis_win_test(pitchrollN, spacing, pitchroll, time_period, exp_dat, gnd_dat)
     
     # test plots
     # t = np.linspace(0, 60, len(norm_exp_data))
