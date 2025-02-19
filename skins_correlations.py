@@ -100,22 +100,26 @@ def hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, 
     # print("loading_df shape: ", loading_df.shape, "avg shape: ", loading_avg.shape)
     # print("unloading_df shape: ", unloading_df.shape, "avg shape: ", unloading_avg.shape)
     # test plots for loading and unloading
-    fig,(ax1,ax2) = plt.subplots(2,1)
+    fig,(ax1,ax2) = plt.subplots(2,1, figsize=(5,5))
     # ax1.errorbar(t_load, loading_avg, yerr=[load_neg_err, load_pos_err], fmt = 'b*',label='MCP')
     ax1.errorbar(t_load, loading_avg, fmt = 'b*',label='MCP')
     ax1.plot(t_load, gnd_load_avg, 'b--', label='gnd')
-    ax1.set_xlabel('Time (s)')
+    ax1.set_xlabel('Time (s), MAE: '+str(round(abs(gnd_load_avg - loading_avg).mean(),3)))
     ax1.set_ylabel('Loading Angle (deg)')
     ax1.legend()
-
+    # mean_abs_error1 = abs(gnd_load_avg - loading_avg).mean() # MAE
+    
     # ax2.errorbar(t_unload, unloading_avg, yerr=[unload_neg_err, unload_pos_err], fmt = 'bo', label='MCP')
     ax2.errorbar(t_unload, unloading_avg, fmt = 'bo', label='MCP')
     ax2.plot(t_unload, gnd_unload_avg, 'b--', label='gnd')
-    ax2.set_xlabel('Time (s)')
+    ax2.set_xlabel('Time (s), MAE: '+str(round(abs(gnd_unload_avg - unloading_avg).mean(),3)))
     ax2.set_ylabel('Unloading Angle (deg)')
     ax2.legend()
+    # ax2.tight_layout()
+    # mean_abs_error2 = abs(gnd_unload_avg - unloading_avg).mean() # MAE
 
-    fig.canvas.manager.set_window_title(pitchrollN+" "+spacing+" cm - hysteresis")
+    fig.tight_layout()
+    fig.canvas.manager.set_window_title(pitchrollN+" "+spacing+" cm - hysteresis")#, MAE: "+str(round(mean_abs_error1,2))+" "+str(round(mean_abs_error2,2)))
     
     errbar_dat = pd.DataFrame({'Time': t_load, 'Loading_avg': loading_avg, 'Loading_neg_err': load_neg_err, 'Loading_pos_err': load_pos_err, 'Gnd_load_avg': gnd_load_avg ,'Unloading_avg': unloading_avg, 'Unloading_neg_err': unload_neg_err, 'Unloading_pos_err': unload_pos_err, 'Gnd_unload_avg': gnd_unload_avg})
     # save loading and unloading data

@@ -11,6 +11,38 @@ FPS = 10 # Hz
 pitchroll, spacing = "pitch", "0-5"
 threshold = 9.0 # +- 10 degrees range of motion
 
+def hysteresis_win_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, offset_gnd_dat):
+    # print("shapes: ", norm_exp_data.shape, offset_gnd_dat.shape)
+    # breakpoint()
+    # offset_gnd_dat = offset_gnd_dat.values # convert to numpy array
+    window_len = int(time_period * FPS)
+
+    cycle_df = pd.DataFrame(index=None)
+    new_cyc = pd.DataFrame(index=None)
+    gnd_cycle_df = pd.DataFrame(index=None)
+    new_gnd_cyc = pd.DataFrame(index=None)
+    check=0
+    for i in range(0, len(norm_exp_data), window_len):
+        new_cyc = pd.DataFrame([norm_exp_data[i:i+window_len]], index=None)
+        new_gnd_cyc = pd.DataFrame([offset_gnd_dat[i:i+window_len]], index=None)
+        
+        cycle_df = pd.concat([cycle_df, new_cyc], ignore_index=True, axis=0)
+        gnd_cycle_df = pd.concat([gnd_cycle_df, new_gnd_cyc], ignore_index=True, axis=0)
+        check+=1
+    t_cycle = np.linspace(0, time_period, cycle_df.shape[1])
+    cycle_avg = cycle_df.mean(axis=0)
+    cycle_neg_err = cycle_df.mean(axis=0) - cycle_df.min(axis=0)
+    cycle_pos_err = cycle_df.max(axis=0) - cycle_df.mean(axis=0)
+    gnd_cycle_avg = gnd_cycle_df.mean(axis=0)
+    
+    fig,ax = plt.subplots()
+    plt.errorbar(t_cycle, cycle_avg, fmt = 'bo', yerr=[cycle_neg_err, cycle_pos_err], label='MCP')
+    plt.plot(t_cycle, gnd_cycle_avg, 'g--', label='GND')
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Angle (degrees)')
+    fig.canvas.manager.set_window_title(pitchrollN+" "+spacing+" cm - hysteresis")
+    plt.legend()
+    
 def hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, offset_gnd_dat):
 
     # parameters for pitch only. 
@@ -100,9 +132,13 @@ def main():
         norm_exp_data = (experimental_data_all - experimental_data_all.min())/(experimental_data_all.max() - experimental_data_all.min()) * (offset_gnd_dat.max() - offset_gnd_dat.min()) + offset_gnd_dat.min()
         norm_exp_mod_dat, gnd_mod_dat = [], []
         for i in range(0, len(norm_exp_data)):
-            if abs(norm_exp_data[i]) < threshold:
+            if abs(offset_gnd_dat[i]) < threshold:
                 norm_exp_mod_dat.append(norm_exp_data[i])
                 gnd_mod_dat.append(offset_gnd_dat[i])
+                # breakpoint()
+            # else: 
+            #     norm_exp_mod_dat.append(np.array([0.0]))
+            #     gnd_mod_dat.append(np.array([0.0]))
         
         exp_df = np.array(norm_exp_mod_dat).flatten()
         gnd_df = np.array(gnd_mod_dat).flatten()
@@ -112,7 +148,11 @@ def main():
         # resolution = motion_range/(time_period*FPS) # range of motion / number of samples in a time period
         # breakpoint()
         hysteresis_test(pitchrollN+"mod", spacing, pitchroll, time_period, exp_df, gnd_df)
-        
+        time_offset = 55
+        exp_dat_ = abs(exp_df[time_offset:])
+        gnd_dat_ = gnd_df[time_offset:]
+        hysteresis_win_test(pitchrollN, spacing, pitchroll, time_period, exp_dat_, gnd_dat_)
+    
         # print("Correlation for "+pitchrollN+" spacing "+spacing+" is: "+str(corr))
         new_row = pd.DataFrame({'pitchrollN': pitchrollN, 'Spacing': spacing, 'Correlation': corr_nonlin, 'MAE': mean_abs_error}, index=[0])
         df = pd.concat([df, new_row], ignore_index=True)
