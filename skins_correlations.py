@@ -129,6 +129,10 @@ def hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, 
     gnd_unload_df.to_csv('skins-test-outputs/hysteresis/cm'+spacing+'/'+pitchrollN+'-gnd-unloading.csv', index=False)
     errbar_dat.to_csv('skins-test-outputs/hysteresis/cm'+spacing+'/'+pitchrollN+'-errbar.csv', index=False)
 
+    # also save avg to a csv for future plots
+    avg_dat = pd.DataFrame({'Time': t_load, 'Loading_avg': loading_avg, 'Gnd_load_avg': gnd_load_avg, 'Unloading_avg': unloading_avg, 'Gnd_unload_avg': gnd_unload_avg})
+    avg_dat.to_csv('skins-test-outputs/hysteresis/cm'+spacing+'/'+pitchrollN+'-avg.csv', index=False)
+
 def corr_calc(pitchrollN, pitchroll, num, spacing): 
 
     # define paths
@@ -179,7 +183,7 @@ def corr_calc(pitchrollN, pitchroll, num, spacing):
     
     
     
-    hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, offset_gnd_dat)
+    # hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, offset_gnd_dat)
     
     # time_offset = 55
     # exp_dat = abs(norm_exp_data[time_offset:])
@@ -187,14 +191,15 @@ def corr_calc(pitchrollN, pitchroll, num, spacing):
     # hysteresis_win_test(pitchrollN, spacing, pitchroll, time_period, exp_dat, gnd_dat)
     
     # test plots
-    # t = np.linspace(0, 60, len(norm_exp_data))
-    # fig, ax = plt.subplots()
-    # ax.plot(t,norm_exp_data, label='Exp_dat')
-    # ax.plot(t,offset_gnd_dat, label='Gnd_dat')
-    # ax.set_ylabel('Angle (degrees)')
-    # ax.set_xlabel('Time (s)')
-    # ax.legend()
-    # fig.canvas.manager.set_window_title(pitchrollN+" "+spacing+" corr: "+str(corr_nonlin)+", mean abs error: "+str(mean_abs_error))
+    t = np.linspace(0, 60, len(norm_exp_data))
+    fig, ax = plt.subplots(figsize=(5,3))
+    ax.plot(t,norm_exp_data, label='Exp_dat')
+    ax.plot(t,offset_gnd_dat, label='Gnd_dat')
+    ax.set_ylabel('Angle (degrees)')
+    ax.set_xlabel('Time (s)')
+    ax.legend(loc='lower right')
+    plt.tight_layout()
+    fig.canvas.manager.set_window_title(pitchrollN+" "+spacing+" corr: "+str(corr_nonlin)+", mean abs error: "+str(mean_abs_error))
 
     # fig.suptitle("Correlation: "+str(round(corr_nonlin,2))+", MAE: "+str(round(mean_abs_error,2)))
 
