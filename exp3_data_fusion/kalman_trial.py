@@ -10,22 +10,23 @@ from filterpy.common import Q_discrete_white_noise
 # const vars
 FPS = 10.0 # 10 fps
 
-def kalman_model():
+def kalman_model(input_data):
     # Initialize the filter
-    kf = KalmanFilter(dim_x=2, dim_z=1)
+    kf = KalmanFilter(dim_x=4, dim_z=2, dim_u=2)
 
-    kf.F = np.eye(2) # state transition matrix
+    kf.F = np.eye(4) # state transition matrix
     kf.H = np.array([[1.,0.]]) # measurement function
     kf.R = np.array([[0.1]]) # measurement noise covariance matrix
     kf.Q = np.eye(2) # process noise covariance matrix
 
-    kf.x = np.zeros((2,1)) # initial state estimate
-    kf.P = np.eye(2) # initial state covariance matrix
+    kf.x = np.zeros((4,1)) # initial state estimate
+    kf.P = np.eye(4) # initial state covariance matrix
 
-    for val in training_data: 
+    for val in input_data: 
         kf.update(val)
         kf.predict()
-        
+# KF - https://filterpy.readthedocs.io/en/latest/kalman/KalmanFilter.html 
+
 # UKF - https://filterpy.readthedocs.io/en/latest/kalman/UnscentedKalmanFilter.html 
 def fx(x, dt):
 # state transition function - predict next state based
@@ -35,10 +36,16 @@ def fx(x, dt):
         [0, 0, 1, dt],
         [0, 0, 0, 1]], dtype=float)
     return np.dot(F, x)
+def gu(u):
+    G = np.array()
+    return np.dot(G, u)
 def hx(x):
     # measurement function - convert state into a measurement
     # where measurements are [x_pos, y_pos]
-    return np.array([x[0], x[2]])
+    H = np.array([[0, -1, 0, 0],
+                [-1, 0, 0, 0]], dtype=float)
+    
+    return np.dot(H, x)
 
 def unscented_kf_model():
     dt = 1/FPS 
@@ -55,4 +62,4 @@ def unscented_kf_model():
 def main():
     data_concat = ... # pitch and roll data both, tensor format 
     
-    data_trainX, data_testX, data_trainY, data_testY = train_test_split(data_concat, test_size=0.2)
+    # data_trainX, data_testX, data_trainY, data_testY = train_test_split(data_concat, test_size=0.2)
