@@ -19,11 +19,13 @@ import torch
 import sys
 import glob
 from scipy.stats import spearmanr
-    
+import wandb
+
+
 def ml_model(useimu, mcpX_train, mcp_y_train, mcpX_test, mcp_y_test, model):
     
     # gnb = GaussianNB()
-    
+    wandb.init(project='ml_fuse_v1', name=model.__class__.__name__,)
     mcp_model = MultiOutputRegressor(model) # define model LK map
     
     pipe_mcp = make_pipeline(StandardScaler(), mcp_model)
@@ -36,12 +38,11 @@ def ml_model(useimu, mcpX_train, mcp_y_train, mcpX_test, mcp_y_test, model):
     mse_mcp = np.mean((mcp_y_test - y_pred_mcp)**2)
     rmse_mcp = np.sqrt(mse_mcp)
     mae_mcp = np.mean(np.abs(mcp_y_test - y_pred_mcp))
+    r2_mcp = r2_score(mcp_y_test, y_pred_mcp)
     
-    print("Metrics:"+'\t'+"Values")
-    print("Mean Squared Error: ", str(mse_mcp))
-    print("Root Mean Squared Error: ", str(rmse_mcp))
-    print("Mean Absolute Error: ", str(mae_mcp))
-    print("R2 Score: ", str(r2_score(mcp_y_test, y_pred_mcp)))
+    # log metrics to wandb
+    wandb.log({"MSE": mse_mcp, "RMSE": rmse_mcp, "MAE": mae_mcp, "R2": r2_mcp})
+    print(f"Model: {model.__class__.__name__} MSE: {mse_mcp:.2f} RMSE: {rmse_mcp:.2f} MAE: {mae_mcp:.2f} R2: {r2_mcp:.2f}")
     
     # plot of predictions and ground truth time series: 
     time_ax = np.linspace(0,30,300)
@@ -71,10 +72,11 @@ def ml_model(useimu, mcpX_train, mcp_y_train, mcpX_test, mcp_y_test, model):
     
     # cross validations
     scores = cross_val_score(pipe_mcp, mcpX_train, mcp_y_train, cv=5)
-    print(f"Cross validation scores mean: {scores.mean():.2f} with standard deviation: {scores.std():.2f}")
+    wandb.log({"Cross Validation Mean": scores.mean(), "Cross Validation Std": scores.std()})
+    print(f"Model: {model.__class__.__name__} Cross validation scores mean: {scores.mean():.2f} with standard deviation: {scores.std():.2f}")
     
     plt.show() # finally show all plots
-    
+        
     # and then save trained models
     # if useimu == "no-imu":
     #     torch.save(pipe_mcp, 'ml-models/mcp_no-imu_model.pth')
@@ -82,7 +84,7 @@ def ml_model(useimu, mcpX_train, mcp_y_train, mcpX_test, mcp_y_test, model):
     #     torch.save(pipe_mcp, 'ml-models/mcp_with-imu_model.pth')
     # else:
     #     print("ERROR: Unrecognised input.")
-
+    wandb.finish()
 def main(useimu, mode):
     
     path_pitchroll = "imu-fusion-data/pitchroll_concat2/"
@@ -203,8 +205,9 @@ def main(useimu, mode):
     #     exit()
         
     else: 
-        print("ERROR: Unrecognised input. Expected inputs are imu= no-imu | use-imu ; ")
-        exit()
+        raise ValueError("ERROR: Unrecognised input. Expected inputs are imu= no-imu | use-imu ; ")
+        # print("ERROR: Unrecognised input. Expected inputs are imu= no-imu | use-imu ; ")
+        # exit()
 
     data_trainX, data_testX, data_trainY, data_testY = train_test_split(experimental_data, ground_truth, test_size=0.1, shuffle=False) 
     
@@ -222,7 +225,7 @@ def main(useimu, mode):
     #     exit()
     # else:
     #     pass
-    
+        
     print("TrainX:", data_trainX.shape, "TrainY:", data_trainY.shape, "TestX:", data_testX.shape, "TestY:", data_testY.shape)
     corr_nonlin, _ = spearmanr(experimental_data, ground_truth, alternative='two-sided',nan_policy='propagate')
     print("Correlation: ", corr_nonlin)
@@ -238,7 +241,7 @@ def main(useimu, mode):
     # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=RandomForestRegressor())
     
     print("Computing ML model: Support Vector Regressor ......")
-    # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=SVR())
+    ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=SVR(kernel='poly', degree=2, C=1.0, epsilon=0.1))
     
     print("Computing ML model: Lasso Regressor ......")
     # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=Lasso())
@@ -281,5 +284,10 @@ if __name__ == "__main__":
     
     mode = sys.argv[2] # pitch | roll | pitchroll
     
-    main(useimu, mode)
-    # main()
+    try:
+        main(useimu, mode)
+    except KeyboardInterrupt:
+        wandb.finish()
+        plt.close('all')
+        print("Keyboard Interrupt. Exiting...")
+        sys.exit()
