@@ -20,12 +20,12 @@ import sys
 import glob
 from scipy.stats import spearmanr
 import wandb
-
+from wandb.sklearn import plot_residuals, plot_outlier_candidates
 
 def ml_model(useimu, mcpX_train, mcp_y_train, mcpX_test, mcp_y_test, model):
     
     # gnb = GaussianNB()
-    wandb.init(project='ml_fuse_v1', name=model.__class__.__name__,)
+    wandb.init(project='ml_fuse_v1', name=model.__class__.__name__, save_code=True)
     mcp_model = MultiOutputRegressor(model) # define model LK map
     
     pipe_mcp = make_pipeline(StandardScaler(), mcp_model)
@@ -56,7 +56,7 @@ def ml_model(useimu, mcpX_train, mcp_y_train, mcpX_test, mcp_y_test, model):
     
     # Residual Plot
     plt.figure("Residual Plot")
-    plt.scatter(y_pred_mcp, mcp_y_test - y_pred_mcp)
+    plt.scatter(mcp_y_test - y_pred_mcp, bins=100)
     plt.xlabel("Predicted Values")
     plt.ylabel("Residuals")
     plt.title("Residual Plot")
@@ -76,7 +76,11 @@ def ml_model(useimu, mcpX_train, mcp_y_train, mcpX_test, mcp_y_test, model):
     print(f"Model: {model.__class__.__name__} Cross validation scores mean: {scores.mean():.2f} with standard deviation: {scores.std():.2f}")
     
     plt.show() # finally show all plots
-        
+    
+    # wandb plots 
+    plot_residuals(y_pred_mcp, mcp_y_test)
+    plot_outlier_candidates(y_pred_mcp, mcp_y_test)
+    
     # and then save trained models
     # if useimu == "no-imu":
     #     torch.save(pipe_mcp, 'ml-models/mcp_no-imu_model.pth')
@@ -238,10 +242,10 @@ def main(useimu, mode):
     # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=DecisionTreeRegressor())
     
     print("Computing ML model: Random Forest Regressor ......")
-    # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=RandomForestRegressor())
+    ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=RandomForestRegressor(verbose=True))
     
     print("Computing ML model: Support Vector Regressor ......")
-    ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=SVR(kernel='poly', degree=2, C=1.0, epsilon=0.1))
+    ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=SVR(kernel='rbf', degree=3, C=5.0, epsilon=0.1, max_iter=1500, verbose=True))
     
     print("Computing ML model: Lasso Regressor ......")
     # ml_model(useimu, data_trainX, data_trainY, data_testX, data_testY, model=Lasso())
@@ -289,5 +293,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         wandb.finish()
         plt.close('all')
-        print("Keyboard Interrupt. Exiting...")
-        sys.exit()
+        # print("Keyboard Interrupt. Exiting...")
+        raise SystemExit("Keyboard Interrupt. Exiting...")

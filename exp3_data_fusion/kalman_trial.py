@@ -10,56 +10,50 @@ from filterpy.common import Q_discrete_white_noise
 # const vars
 FPS = 10.0 # 10 fps
 
-def kalman_model(input_data):
-    # Initialize the filter
-    kf = KalmanFilter(dim_x=4, dim_z=2, dim_u=2)
+class kalman_filtering:
+    def __init__(self):
+        self.kf = KalmanFilter(dim_x=4, dim_z=4) # z=measurements=[LKx, LKy, gyroX, gyroY], x=states=[LKx, LKy, gyroX, gyroY,LKx_dot, LKy_dot, gyroX_dot, gyroY_dot]
+        self.s = 1 # scaling factor
+    def kalman_model(self):
+        # Initialize the filter
+        # self.kf = KalmanFilter(dim_x=4, dim_z=2, dim_u=2)
+        self.kf.F = np.eye(4) # state transition matrix
+        self.kf.B = self.s * np.zeros(4,2) # control input matrix
+        self.kf.H = np.array([[0.,-1.,0.,0.],[-1.,0.,0.,0.]]) # measurement function
+        self.kf.R = np.array([[0.1]]) # measurement noise covariance matrix
+        self.kf.Q = Q_discrete_white_noise(dim=2,dt=1/FPS,var=0.1) # process noise covariance matrix
 
-    kf.F = np.eye(4) # state transition matrix
-    kf.H = np.array([[1.,0.]]) # measurement function
-    kf.R = np.array([[0.1]]) # measurement noise covariance matrix
-    kf.Q = np.eye(2) # process noise covariance matrix
-
-    kf.x = np.zeros((4,1)) # initial state estimate
-    kf.P = np.eye(4) # initial state covariance matrix
-
-    for val in input_data: 
-        kf.update(val)
-        kf.predict()
-# KF - https://filterpy.readthedocs.io/en/latest/kalman/KalmanFilter.html 
-
-# UKF - https://filterpy.readthedocs.io/en/latest/kalman/UnscentedKalmanFilter.html 
-def fx(x, dt):
-# state transition function - predict next state based
-# on constant velocity model x = vt + x_0
-    F = np.array([[1, dt, 0, 0],
-        [0, 1, 0, 0],
-        [0, 0, 1, dt],
-        [0, 0, 0, 1]], dtype=float)
-    return np.dot(F, x)
-def gu(u):
-    G = np.array()
-    return np.dot(G, u)
-def hx(x):
-    # measurement function - convert state into a measurement
-    # where measurements are [x_pos, y_pos]
-    H = np.array([[0, -1, 0, 0],
-                [-1, 0, 0, 0]], dtype=float)
+        self.kf.x = np.zeros((4,1)) # initial state estimate
+        self.kf.P = np.eye(4) # initial state covariance matrix
+        self.kf.z = np.zeros((2,1)) # initial output vector, Z=Hx
+        
+    # KF - https://filterpy.readthedocs.io/en/latest/kalman/KalmanFilter.html 
+    # use this guide - https://medium.com/@satya15july_11937/sensor-fusion-with-kalman-filter-c648d6ec2ec2 
     
-    return np.dot(H, x)
+    def get_gyro_data(self, i): # 
+        pass
+    def get_mcp_data(self):
+        pass 
+    def live_plot(self, prediction, measurement):
+        pass
+    def main_loop(self, data):
+        gyro_measure = data[:,:] # placeholder
+        mcp_measure = data[:,0:2] # placeholder
+        for i in range(len(data)):
+            # u = kalman_filtering.get_mcp_data(i)
+            prediction = self.kf.predict(u) # x needs updating too, how does this get updated?? 
+            self.kf.z = np.array([kalman_filtering.get_mcp_data(i), kalman_filtering.get_gyro_data(i)])
+            new_val = self.kf.update(self.kf.z)
+            x = self.kf.x
+            kalman_filtering.live_plot(x)
 
-def unscented_kf_model():
-    dt = 1/FPS 
-    # create sigma points to use in the filter. This is standard for Gaussian processes
-    points = MerweScaledSigmaPoints(4, alpha=.1, beta=2., kappa=-1)
-    
-    kf = kf = UnscentedKalmanFilter(dim_x=4, dim_z=2, dt=dt, fx=fx, hx=hx, points=points) # UnscentedKalmanFilter(dim_x, dim_z, dt, hx, fx, points, sqrt_fn=None, x_mean_fn=None, z_mean_fn=None, residual_x=None, residual_z=None)
-    kf.x = np.array([-1., 1., -1., 1]) # initial state
-    kf.P *= 0.2 # initial uncertainty
-    z_std = 0.1
-    kf.R = np.diag([z_std**2, z_std**2]) # 1 standard
-    kf.Q = Q_discrete_white_noise(dim=2, dt=dt, var=0.01**2, block_size=2)
-
-def main():
-    data_concat = ... # pitch and roll data both, tensor format 
-    
-    # data_trainX, data_testX, data_trainY, data_testY = train_test_split(data_concat, test_size=0.2)
+if __name__ == "__main__":
+    kf = kalman_filtering()
+    try:
+        kf.kalman_model()
+    except Exception as e:
+        # print(f"Error in kalman_model: {e}")
+        # raise e("Error in kalman_model: {e}")
+        raise SystemError(f"Error in kalman_model: {e}")
+    except KeyboardInterrupt:
+        raise SystemExit('KeyBoardInterrupt: Exiting the program.')
