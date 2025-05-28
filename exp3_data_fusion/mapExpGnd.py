@@ -5,9 +5,9 @@ from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 import os
 import sys
-from linkingIO import normalize_vector
-from scipy.spatial.transform import Rotation as R
-
+# from scipy.spatial.transform import Rotation as R
+sys.path.append("/home/bhoomika/opticalflow-techniques-v2") 
+from exp1_LK_init_code.linkingIO import normalize_vector
 
 # execution command example: python mapExpGnd.py pitch1 , python mapExpGnd.py roll1
 
@@ -20,13 +20,13 @@ if pitchroll == "pitch":
     ax_sel, gnd_sel, imu_sel = 'x_vals', 'pitch_y', 'IMU X'
 elif pitchroll == "roll":
     path = "roll_22-aug-2024/fibrescope"+i
-    ax_sel, gnd_sel,imu_sel = 'y_vals', 'roll_x', 'IMU Y'
+    ax_sel, gnd_sel, imu_sel = 'y_vals', 'roll_x', 'IMU Y'
 else:
-    print("ERROR: Unrecognised input for pressure selector.")
+    SystemExit("ERROR: Unrecognised input for pressure selector.")
 
 skipNrows = 13 # first N rows to be skipped to remove NAN and zero values from ground truth
 
-dat_exp = pd.read_csv("imu-fusion-outputs/LK_"+pitchroll+"2/imu-fusion-outputs_LK_Zavg"+exp_data_path+".csv",delimiter=',',usecols=[ax_sel],dtype={ax_sel: float}) # lk data, experimental data
+dat_exp = pd.read_csv("imu-fusion-data/LK_"+pitchroll+"2/imu-fusion-outputs_LK_Zavg"+exp_data_path+".csv",delimiter=',',usecols=[ax_sel],dtype={ax_sel: float}) # lk data, experimental data
 dat_exp = dat_exp.iloc[skipNrows:]
 dat_pressure = pd.read_csv("data_collection_with_franka/B07LabTrials/imu-sensor-fusion2/"+path+".csv", delimiter=',',usecols=['Pressure (kPa)'],dtype={'Pressure (kPa)': float}) # feedback
 dat_pressure = dat_pressure.iloc[skipNrows:]
@@ -36,7 +36,7 @@ dat_pressure_norm = normalize_vector(dat_pressure) # feedback normalized
 
 dat_exp_pres_norm = pd.concat([dat_exp_norm,dat_pressure_norm],axis=1) # x with feedback (pressure)
 
-dat_gnd_euler = pd.read_csv("imu-fusion-outputs/LK_"+pitchroll+"2/"+exp_data_path+"euler_gnd.csv",delimiter=',',usecols=[gnd_sel],dtype={gnd_sel: float}) # pitch_y being used for pitch and roll data both, works well. 
+dat_gnd_euler = pd.read_csv("imu-fusion-data/LK_"+pitchroll+"2/"+exp_data_path+"euler_gnd.csv",delimiter=',',usecols=[gnd_sel],dtype={gnd_sel: float}) # pitch_y being used for pitch and roll data both, works well. 
 dat_gnd_euler = dat_gnd_euler.iloc[skipNrows:]
 dat_gnd_euler_norm = normalize_vector(dat_gnd_euler) # gnd truth normalized
 
@@ -72,8 +72,7 @@ elif pitchroll == "roll":
     # offset_gyro = -2.00 + gyro_all_rotated.iloc[:,0] # select column IMU X
     offset_gyro = -6.4 + dat_gyro
 else: 
-    print("ERROR: Unrecognised input for motion type selector.")
-    exit()
+    SyntaxError("ERROR: Unrecognised input for motion type selector.")
     
 # min max scaler for exp data 
 min_val = offset_gnd_euler.min().iloc[0]
@@ -97,12 +96,16 @@ plt.tight_layout()
 plt.show()
 
 # extract filtered data and save as csv files
-save_bool = sys.argv[2]
+if len(sys.argv) > 2:
+    save_bool = sys.argv[2]
+else:
+    save_bool = ""
+
 if save_bool == "save":
     data = pd.concat([offset_gnd_euler,dat_pressure,offset_gyro, dat_exp],axis=1, ignore_index=False,)
-    savename = "imu-fusion-outputs/pitchroll_concat/"+pitchroll+"_concat/"+pitchroll+"_concat"+i+".csv"
+    savename = "imu-fusion-data/pitchroll_concat/"+pitchroll+"_concat/"+pitchroll+"_concat"+i+".csv"
     data.to_csv(savename, header=["GND (euler deg)","Pressure (kPa)","Gyro (deg)","Experimental (LK raw)"])
-else: 
+else:
     print("Not saving...")
     pass
 

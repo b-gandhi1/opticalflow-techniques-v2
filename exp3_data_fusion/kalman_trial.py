@@ -8,6 +8,7 @@ from filterpy.common import Q_discrete_white_noise
 import glob 
 import sys
 import os
+from sklearn.preprocessing import MinMaxScaler
 
 # const vars
 FPS = 10.0 # 10 fps
@@ -19,7 +20,7 @@ class kalman_filtering:
         dim_x, dim_z = 8, 4 # state dimension, measurement dimension
         self.dt = 1/FPS # time step
         self.kf = KalmanFilter(dim_x=dim_x, dim_z=dim_z) # z=measurements=[LKx, LKy, gyroX, gyroY], x=states=[LKx, LKy, gyroX, gyroY,LKx_dot, LKy_dot, gyroX_dot, gyroY_dot]
-        self.s = 1 # scaling factor
+
         self.kf.F = np.array([[1.,0.,0.,0.,self.dt,0.,0.,0.],
                               [0.,1.,0.,0.,0.,self.dt,0.,0.],
                               [0.,0.,1.,0.,0.,0.,self.dt,0.],
@@ -62,23 +63,41 @@ class kalman_filtering:
                                                                         'IMY Rx': float, 
                                                                         'IMU Ry': float, 
                                                                         'LKx': float, 
-                                                                        'LKy': float})
-        print(pitchroll_df.shape)
+                                                                        'LKy': float}) 
+        
+        pitchroll_df = pitchroll_df.loc[pitchroll_df.ne(0).all(axis=1)]#.reset_index() # remove rows with zero values
+        # breakpoint()
         if self.mode == "pitch":
-            pitchroll_lk = pitchroll_df.loc[:,'LKx']
+            pitchroll_lk = pitchroll_df.loc[:,'LKy'] 
             pitchroll_gyro = pitchroll_df.loc[:,'IMU Rx']
             gnd_truth = pitchroll_df.loc[:,'Franka Ry'] 
+            offset_gnd = 37.9
+            offset_gyro = 0.0
         elif self.mode == "roll":
-            pitchroll_lk = pitchroll_df.loc[:,'LKy']
+            pitchroll_lk = pitchroll_df.loc[:,'LKx']
             pitchroll_gyro = pitchroll_df.loc[:,'IMU Ry']
-            gnd_truth = pitchroll_df.loc[:,'Franka Rx']
+            gnd_truth = pitchroll_df.loc[:,'Franka Rx'] * (-1)
+            offset_gnd = 46.0
+            offset_gyro = 6.4
         else:
             raise ValueError("Invalid mode. Choose 'pitch' or 'roll'. Current mode: {}".format(self.mode))
         
-        return pitchroll_lk, pitchroll_gyro, gnd_truth
+        offset_gnd_dat = gnd_truth + offset_gnd
+        offset_pitchroll_gyro = pitchroll_gyro + offset_gyro
+        # minmax scaling MCP data
+        min_val = offset_gnd_dat.min()
+        print(f"offset_gnd_dat min val: {min_val}")
+        max_val = offset_gnd_dat.max()
+        print(f"offset_gnd_dat max val: {max_val}")
+        scaler = MinMaxScaler(feature_range=(min_val,max_val))
+        # normalise
+        norm_pitchroll_lk = scaler.fit_transform(pitchroll_lk.values.reshape(-1,1)) # reshape for single feature
+        # norm_pitchroll_lk = (pitchroll_lk.values - pitchroll_lk.min())/(pitchroll_lk.max() - pitchroll_lk.min()) * (offset_gnd_dat.max() - offset_gnd_dat.min()) + offset_gnd_dat.min()
+        breakpoint()
+        return norm_pitchroll_lk, offset_pitchroll_gyro, gnd_truth
         
     def main_loop(self):
-        lk, gyro, gnd_t = kalman_filtering.get_data(self)
+        lk, gyro, gnd_t = self.get_data()
         start = 0 # change this to see different parts of data
         window = start + 50
         plt.ion()
@@ -95,7 +114,7 @@ class kalman_filtering:
         ax1.set_xlabel("Index")
         ax1.set_ylabel("Rotation "+self.mode) # pitch or roll
         ax1.set_xlim(start, window)
-        ax1.set_ylim(280, 310) # rance for lk and gnd truth
+        ax1.set_ylim(-30, 30) # rance for lk and gnd truth
         ax2.set_xlabel("Index")
         ax2.set_ylabel("Residuals")
         ax2.set_xlim(start, window)
