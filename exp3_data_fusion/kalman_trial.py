@@ -64,14 +64,13 @@ class kalman_filtering:
                                                                         'IMU Ry': float, 
                                                                         'LKx': float, 
                                                                         'LKy': float}) 
-        
-        pitchroll_df = pitchroll_df.loc[pitchroll_df.ne(0).all(axis=1)]#.reset_index() # remove rows with zero values
+        pitchroll_df = pitchroll_df.loc[pitchroll_df.ne(0).all(axis=1)].reset_index(drop=True) # remove rows with zero values
         # breakpoint()
         if self.mode == "pitch":
             pitchroll_lk = pitchroll_df.loc[:,'LKy'] 
             pitchroll_gyro = pitchroll_df.loc[:,'IMU Rx']
             gnd_truth = pitchroll_df.loc[:,'Franka Ry'] 
-            offset_gnd = 37.9
+            offset_gnd = -37.9
             offset_gyro = 0.0
         elif self.mode == "roll":
             pitchroll_lk = pitchroll_df.loc[:,'LKx']
@@ -85,23 +84,23 @@ class kalman_filtering:
         offset_gnd_dat = gnd_truth + offset_gnd
         offset_pitchroll_gyro = pitchroll_gyro + offset_gyro
         # minmax scaling MCP data
-        min_val = offset_gnd_dat.min()
+        min_val = offset_gnd_dat.min() 
         print(f"offset_gnd_dat min val: {min_val}")
-        max_val = offset_gnd_dat.max()
+        max_val = offset_gnd_dat.max() 
         print(f"offset_gnd_dat max val: {max_val}")
         scaler = MinMaxScaler(feature_range=(min_val,max_val))
         # normalise
-        norm_pitchroll_lk = scaler.fit_transform(pitchroll_lk.values.reshape(-1,1)) # reshape for single feature
+        scaled_pitchroll_lk = scaler.fit_transform(pitchroll_lk.values.reshape(-1,1)) # reshape for single feature
         # norm_pitchroll_lk = (pitchroll_lk.values - pitchroll_lk.min())/(pitchroll_lk.max() - pitchroll_lk.min()) * (offset_gnd_dat.max() - offset_gnd_dat.min()) + offset_gnd_dat.min()
-        breakpoint()
-        return norm_pitchroll_lk, offset_pitchroll_gyro, gnd_truth
+        return scaled_pitchroll_lk, offset_pitchroll_gyro, offset_gnd_dat
         
     def main_loop(self):
         lk, gyro, gnd_t = self.get_data()
+        # breakpoint()
         start = 0 # change this to see different parts of data
-        window = start + 50
+        window = start + 100
         plt.ion()
-        fig = plt.figure(figsize=(10, 8))
+        fig = plt.figure(figsize=(6, 4))
         ax1 = fig.add_subplot(211)
         line1, = ax1.plot([], [], 'ro', label='KF')
         line2, = ax1.plot([], [], 'bo', label='Ground Truth')
@@ -121,24 +120,34 @@ class kalman_filtering:
         ax2.set_ylim(-10, 10)
         x_store, gnd_store, residuals_store, index = [], [], [], []
         # index = np.linspace(start, window, num=window-start)
+        
+        # init: 
+        p = self.kf.P # initial state covariance matrix
+        x = self.kf.x # initial state estimate
+        f = self.kf.F # state transition matrix
+        q = self.kf.Q # process noise covariance matrix
+        z = self.kf.z # initial output vector, z=measurements
+        r = self.kf.R # measurement noise covariance matrix
+        h = self.kf.H # measurement function
+        
         for i in range(start, window):
             # u = kalman_filtering.get_mcp_data(i)
-            self.kf.predict() # update x
+            x, p = self.kf.predict(F=f,Q=q) # update x
             # update measurement, z, based on motion type
             if self.mode == "pitch":
-                self.kf.z = np.array([[lk[i], 0., gyro[i], 0.]]).T
+                self.kf.z = np.array([[float(lk[i]), 0., gyro[i], 0.]]).T
                 # state_key, residuals_key = ...
             elif self.mode == "roll":
-                self.kf.z = np.array([[0., lk[i], 0., gyro[i]]]).T
+                self.kf.z = np.array([[0., float(lk[i]), 0., gyro[i]]]).T
                 # state_key, residuals_key = ...
             else: 
                 raise ValueError(f"Invalid mode: {self.mode}. Expected 'pitch' or 'roll'.")
             gnd_truth = gnd_t[i] # ground truth
-            self.kf.update(self.kf.z)
-            x = self.kf.x
+            x, p = self.kf.update(z=z, R=r,H=h)
+            # x = self.kf.x
             residuals = self.kf.y
             # kalman_filtering.live_plot(self, x, gnd_truth, residuals)
-            print('x: ', x[0])
+            print('x: ', x)
             # print('z: ', self.kf.z)
             print('gnd_truth: ', gnd_truth)
             print('residuals: ', residuals[0])
@@ -153,9 +162,10 @@ class kalman_filtering:
             
             fig.canvas.draw()
             fig.canvas.flush_events()
-            plt.pause(1/FPS)
+            # plt.pause(1/FPS)
         ax1.legend()
         ax2.legend()
+        plt.tight_layout()
         plt.ioff() # switch off before show
         plt.show()
 
