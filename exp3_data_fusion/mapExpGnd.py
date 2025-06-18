@@ -26,7 +26,7 @@ else:
 
 skipNrows = 13 # first N rows to be skipped to remove NAN and zero values from ground truth
 
-dat_exp = pd.read_csv("imu-fusion-data/LK_"+pitchroll+"2/imu-fusion-outputs_LK_Zavg"+exp_data_path+".csv",delimiter=',',usecols=[ax_sel],dtype={ax_sel: float}) # lk data, experimental data
+dat_exp = pd.read_csv("/home/bhoomika/opticalflow-techniques-v2/imu-fusion-data/LK_"+pitchroll+"2/imu-fusion-outputs_LK_Zavg"+exp_data_path+".csv",delimiter=',',usecols=[ax_sel],dtype={ax_sel: float}) # lk data, experimental data
 dat_exp = dat_exp.iloc[skipNrows:]
 dat_pressure = pd.read_csv("data_collection_with_franka/B07LabTrials/imu-sensor-fusion2/"+path+".csv", delimiter=',',usecols=['Pressure (kPa)'],dtype={'Pressure (kPa)': float}) # feedback
 dat_pressure = dat_pressure.iloc[skipNrows:]

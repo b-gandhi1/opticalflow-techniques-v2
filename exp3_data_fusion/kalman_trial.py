@@ -13,25 +13,21 @@ from sklearn.preprocessing import MinMaxScaler
 # const vars
 FPS = 10.0 # 10 fps
 
-class kalman_filtering:
+class Kalman_filtering:
     def __init__(self):
         
         self.mode = "none"
-        dim_x, dim_z = 8, 4 # state dimension, measurement dimension
+        dim_x, dim_z = 4, 4 # state dimension, measurement dimension
         self.dt = 1/FPS # time step
-        self.kf = KalmanFilter(dim_x=dim_x, dim_z=dim_z) # z=measurements=[LKx, LKy, gyroX, gyroY], x=states=[LKx, LKy, gyroX, gyroY,LKx_dot, LKy_dot, gyroX_dot, gyroY_dot]
+        self.kf = KalmanFilter(dim_x=dim_x, dim_z=dim_z) # z=measurements=[LKx, LKy, gyroX, gyroY], x=states=[LKx, LKy, LKx_dot, LKy_dot]
 
-        self.kf.F = np.array([[1.,0.,0.,0.,self.dt,0.,0.,0.],
-                              [0.,1.,0.,0.,0.,self.dt,0.,0.],
-                              [0.,0.,1.,0.,0.,0.,self.dt,0.],
-                              [0.,0.,0.,1.,0.,0.,0.,self.dt],
-                              [0.,0.,0.,0.,1.,0.,0.,0.],
-                              [0.,0.,0.,0.,0.,1.,0.,0.],
-                              [0.,0.,0.,0.,0.,0.,1.,0.],
-                              [0.,0.,0.,0.,0.,0.,0.,1.]]) # state transition matrix, 8 x 8. constant velocity model.
+        self.kf.F = np.array([[1.,0.,self.dt,0.],
+                              [0.,1.,0.,self.dt],
+                              [0.,0.,1.,0.],
+                              [0.,0.,0.,1.]]) # state transition matrix, 4 x 4. constant velocity model. constant matrix. 
         self.kf.H = np.eye(dim_z,dim_x) # measurement function
-        self.kf.R = np.eye(dim_z)*0.1 # measurement noise covariance matrix
-        self.kf.Q = np.eye(dim_x)*0.1 # process noise init
+        self.kf.R = np.eye(dim_z)*10 # measurement noise covariance matrix
+        self.kf.Q = np.eye(dim_x)*10 # process noise init
         #Q_discrete_white_noise(dim=dim_z,dt=1/FPS,var=0.1) # process noise covariance matrix
 
         self.kf.x = np.zeros((dim_x,1)) # initial state estimate
@@ -41,10 +37,10 @@ class kalman_filtering:
         
     # KF - https://filterpy.readthedocs.io/en/latest/kalman/KalmanFilter.html 
     # use this guide - https://medium.com/@satya15july_11937/sensor-fusion-with-kalman-filter-c648d6ec2ec2 
-    
+        
     def get_data(self): # 
         # path_pitchroll = os.path.abspath(os.path.join(os.getcwd(), os.pardir,"imu-fusion-data/pitchroll_concat2"))
-        path_pitchroll = os.path.join(os.getcwd(), "imu-fusion-data/pitchroll_concat2")
+        path_pitchroll = os.path.join(os.getcwd(), "imu-fusion-data/pitchroll_concat3")
         if self.mode == "pitch" or "roll": # or "tz":
             read_mode = self.mode
         else:
@@ -67,13 +63,13 @@ class kalman_filtering:
         pitchroll_df = pitchroll_df.loc[pitchroll_df.ne(0).all(axis=1)].reset_index(drop=True) # remove rows with zero values
         # breakpoint()
         if self.mode == "pitch":
-            pitchroll_lk = pitchroll_df.loc[:,'LKy'] 
-            pitchroll_gyro = pitchroll_df.loc[:,'IMU Rx']
+            pitchroll_lk = pitchroll_df.loc[:,'LKx'] 
+            pitchroll_gyro = pitchroll_df.loc[:,'IMU Rx'] * (-1)
             gnd_truth = pitchroll_df.loc[:,'Franka Ry'] 
             offset_gnd = -37.9
             offset_gyro = 0.0
         elif self.mode == "roll":
-            pitchroll_lk = pitchroll_df.loc[:,'LKx']
+            pitchroll_lk = pitchroll_df.loc[:,'LKy']
             pitchroll_gyro = pitchroll_df.loc[:,'IMU Ry']
             gnd_truth = pitchroll_df.loc[:,'Franka Rx'] * (-1)
             offset_gnd = 46.0
@@ -91,13 +87,28 @@ class kalman_filtering:
         scaler = MinMaxScaler(feature_range=(min_val,max_val))
         # normalise
         scaled_pitchroll_lk = scaler.fit_transform(pitchroll_lk.values.reshape(-1,1)) # reshape for single feature
+        # breakpoint()
         # norm_pitchroll_lk = (pitchroll_lk.values - pitchroll_lk.min())/(pitchroll_lk.max() - pitchroll_lk.min()) * (offset_gnd_dat.max() - offset_gnd_dat.min()) + offset_gnd_dat.min()
+        print(f"min max of scaled_pitchroll_lk: {scaled_pitchroll_lk.min()}, {scaled_pitchroll_lk.max()}")
+        print(f"sizes: scaled_pitchroll_lk: {scaled_pitchroll_lk.shape}, offset_pitchroll_gyro: {offset_pitchroll_gyro.shape}, offset_gnd_dat: {offset_gnd_dat.shape}")
+        # test data, plot
+        # plt.figure()
+        # plt.plot(scaled_pitchroll_lk, label='LK')
+        # plt.plot(offset_pitchroll_gyro, label='Gyro')
+        # plt.plot(offset_gnd_dat, label='Ground Truth')
+        # plt.legend()
+        # plt.title(f"TEST: scaled LK data for {self.mode} mode")
+        # plt.xlabel("Index")
+        # plt.ylabel("Degrees")
+        # plt.show()
+        
         return scaled_pitchroll_lk, offset_pitchroll_gyro, offset_gnd_dat
         
     def main_loop(self):
         lk, gyro, gnd_t = self.get_data()
+        
         # breakpoint()
-        start = 0 # change this to see different parts of data
+        start = 700 # change this to see different parts of data
         window = start + 100
         plt.ion()
         fig = plt.figure(figsize=(6, 4))
@@ -106,7 +117,8 @@ class kalman_filtering:
         line2, = ax1.plot([], [], 'bo', label='Ground Truth')
         ax1.set_xlim(start, window)
         ax2 = fig.add_subplot(212)
-        line3, = ax2.plot([], [], 'go', label='Residuals')
+        line3, = ax2.plot([], [], 'go', label='Residual pos')
+        line4, = ax2.plot([], [], 'mo', label='Residual vel')
         ax2.set_xlim(start, window)
         ax1.set_title("Kalman Filter")
         ax2.set_title("Residuals")
@@ -118,65 +130,63 @@ class kalman_filtering:
         ax2.set_ylabel("Residuals")
         ax2.set_xlim(start, window)
         ax2.set_ylim(-10, 10)
+        plt.tight_layout()
+
         x_store, gnd_store, residuals_store, index = [], [], [], []
         # index = np.linspace(start, window, num=window-start)
         
-        # init: 
-        p = self.kf.P # initial state covariance matrix
-        x = self.kf.x # initial state estimate
-        f = self.kf.F # state transition matrix
-        q = self.kf.Q # process noise covariance matrix
-        z = self.kf.z # initial output vector, z=measurements
-        r = self.kf.R # measurement noise covariance matrix
-        h = self.kf.H # measurement function
-        
         for i in range(start, window):
             # u = kalman_filtering.get_mcp_data(i)
-            x, p = self.kf.predict(F=f,Q=q) # update x
+            # self.kf.x, self.kf.P = 
+            self.kf.predict(F=self.kf.F,Q=self.kf.Q) # update x
             # update measurement, z, based on motion type
             if self.mode == "pitch":
                 self.kf.z = np.array([[float(lk[i]), 0., gyro[i], 0.]]).T
+                # x_ax, z_ax, res_ax_pos, res_ax_vel = ...
                 # state_key, residuals_key = ...
             elif self.mode == "roll":
                 self.kf.z = np.array([[0., float(lk[i]), 0., gyro[i]]]).T
+                # x_ax, z_ax, res_ax_pos, res_ax_vel = ...
                 # state_key, residuals_key = ...
             else: 
                 raise ValueError(f"Invalid mode: {self.mode}. Expected 'pitch' or 'roll'.")
             gnd_truth = gnd_t[i] # ground truth
-            x, p = self.kf.update(z=z, R=r,H=h)
+            # self.kf.x, self.kf.P = 
+            self.kf.update(z=self.kf.z, H=self.kf.H, R=self.kf.R) # update state with measurement
+            print() # is z being updated?? ------------
             # x = self.kf.x
             residuals = self.kf.y
             # kalman_filtering.live_plot(self, x, gnd_truth, residuals)
-            print('x: ', x)
+            # print('x: ', self.kf.x)
+            # print('F: ', self.kf.F)
             # print('z: ', self.kf.z)
-            print('gnd_truth: ', gnd_truth)
-            print('residuals: ', residuals[0])
-            
-            x_store = np.append(x_store, x[0])
+            # print('gnd_truth: ', gnd_truth)
+            print('residuals: ', residuals)
+            # print('z: ', self.kf.z)
+            # print('x: ', self.kf.x)
+            x_store = np.append(x_store, self.kf.x[2])
             gnd_store = np.append(gnd_store, gnd_truth)
-            residuals_store = np.append(residuals_store, residuals[0])
+            residuals_store_pos = np.append(residuals_store, residuals[0])
+            residuals_store_vel = np.append(residuals_store, residuals[2])
             index = np.append(index, i)
             line1.set_data(index,x_store)
             line2.set_data(index,gnd_store)
-            line3.set_data(index,residuals_store)
+            line3.set_data(index,residuals_store_pos)
+            line4.set_data(index,residuals_store_vel)
             
             fig.canvas.draw()
             fig.canvas.flush_events()
             # plt.pause(1/FPS)
         ax1.legend()
         ax2.legend()
-        plt.tight_layout()
         plt.ioff() # switch off before show
         plt.show()
 
 if __name__ == "__main__":
-    kf = kalman_filtering()
+    kf = Kalman_filtering()
     kf.mode = sys.argv[1] # input mode: "pitch" | "roll"
     try:
         kf.main_loop()
-    except Exception as e:
-        print(f"Error in kalman_model: {e}")
-        raise
     except KeyboardInterrupt:
         plt.close('all')
         raise SystemExit('KeyBoardInterrupt: Exiting the program.')

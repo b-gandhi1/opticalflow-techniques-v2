@@ -7,6 +7,7 @@ import sys
 import torch
 import glob
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import train_test_split, cross_val_score
 
 class DataFusionTrial:
     def __init__(self, mode="none"): # mode for pitch | roll
@@ -67,8 +68,40 @@ class DataFusionTrial:
         # norm_pitchroll_lk = (pitchroll_lk.values - pitchroll_lk.min())/(pitchroll_lk.max() - pitchroll_lk.min()) * (offset_gnd_dat.max() - offset_gnd_dat.min()) + offset_gnd_dat.min()
         return scaled_pitchroll_lk, offset_pitchroll_gyro, offset_gnd_dat
     
-    def preprocess(): 
-        pass
+    def preprocess(self): 
+        pitchroll_lk, pitchroll_gyro, ground_truth = self.get_data()
+        
+        if self.useimu == "no-imu" and self.mode == "pitchroll": # without imu, no imu data used
+            experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKx', 'LKy']]
+            ground_truth = pitchroll_df.loc[:,['Franka Rx', 'Franka Ry']]
+
+        elif self.useimu == "no-imu" and self.mode == "pitch":
+            experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKx', 'LKy']]
+            ground_truth = pitchroll_df.loc[:,['Franka Ry']]
+        
+        elif self.useimu == "no-imu" and self.mode == "roll":
+            experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKx', 'LKy']]
+            ground_truth = pitchroll_df.loc[:,['Franka Rx']]
+            
+        elif self.useimu == "use-imu" and self.mode == "pitch":
+            experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKx', 'LKy', 'IMU Rx']]
+            ground_truth = pitchroll_df.loc[:,['Franka Ry']]
+
+        elif self.useimu == "use-imu" and self.mode == "roll":
+            experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKx', 'LKy', 'IMU Ry']]
+            ground_truth = pitchroll_df.loc[:,['Franka Rx']]
+
+        elif self.useimu == "use-imu" and self.mode == "pitchroll": # with imu, use imu data
+            experimental_data = pitchroll_df.loc[:,['Pressure (kPa)', 'LKx', 'LKy', 'IMU Rx', 'IMU Ry']]
+            ground_truth = pitchroll_df.loc[:,['Franka Rx', 'Franka Ry']]
+
+        else: 
+            raise ValueError("ERROR: Unrecognised input. Expected inputs are imu= no-imu | use-imu ; ")
+
+        experimental_data = np.hstack((pitchroll_lk, pitchroll_gyro.values.reshape(-1, 1))) 
+        data_trainX, data_testX, data_trainY, data_testY = train_test_split(experimental_data, ground_truth, test_size=0.1, shuffle=False) 
+
+        return data_trainX, data_testX, data_trainY, data_testY
     
     def model1():
         pass
@@ -80,4 +113,4 @@ class DataFusionTrial:
 if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else "none"
     data_fusion_trial = DataFusionTrial(mode=mode)
-    scaled_pitchroll_lk, offset_pitchroll_gyro, offset_gnd_dat = data_fusion_trial.get_data()
+    # scaled_pitchroll_lk, offset_pitchroll_gyro, offset_gnd_dat = data_fusion_trial.get_data()
