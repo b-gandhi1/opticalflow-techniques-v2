@@ -69,16 +69,18 @@ class Kalman_filtering:
             offset_gnd = -37.9
             offset_gyro = 0.0
         elif self.mode == "roll":
-            pitchroll_lk = pitchroll_df.loc[:,'LKy']
-            pitchroll_gyro = pitchroll_df.loc[:,'IMU Ry']
-            gnd_truth = pitchroll_df.loc[:,'Franka Rx'] * (-1)
-            offset_gnd = 46.0
-            offset_gyro = 6.4
+            trim = 600
+            pitchroll_lk = pitchroll_df.loc[trim:,'LKy']
+            pitchroll_gyro = pitchroll_df.loc[trim:,'IMU Ry']
+            gnd_truth = pitchroll_df.loc[trim:,'Franka Rx'] * (-1)
+            offset_gnd = 52.0
+            offset_gyro = -11.2
+            
         else:
             raise ValueError("Invalid mode. Choose 'pitch' or 'roll'. Current mode: {}".format(self.mode))
         
-        offset_gnd_dat = gnd_truth + offset_gnd
-        offset_pitchroll_gyro = pitchroll_gyro + offset_gyro
+        offset_gnd_dat = gnd_truth.values + offset_gnd
+        offset_pitchroll_gyro = pitchroll_gyro.values + offset_gyro
         # minmax scaling MCP data
         min_val = offset_gnd_dat.min() 
         print(f"offset_gnd_dat min val: {min_val}")
@@ -87,52 +89,51 @@ class Kalman_filtering:
         scaler = MinMaxScaler(feature_range=(min_val,max_val))
         # normalise
         scaled_pitchroll_lk = scaler.fit_transform(pitchroll_lk.values.reshape(-1,1)) # reshape for single feature
-        # breakpoint()
         # norm_pitchroll_lk = (pitchroll_lk.values - pitchroll_lk.min())/(pitchroll_lk.max() - pitchroll_lk.min()) * (offset_gnd_dat.max() - offset_gnd_dat.min()) + offset_gnd_dat.min()
         print(f"min max of scaled_pitchroll_lk: {scaled_pitchroll_lk.min()}, {scaled_pitchroll_lk.max()}")
         print(f"sizes: scaled_pitchroll_lk: {scaled_pitchroll_lk.shape}, offset_pitchroll_gyro: {offset_pitchroll_gyro.shape}, offset_gnd_dat: {offset_gnd_dat.shape}")
         # test data, plot
-        # plt.figure()
-        # plt.plot(scaled_pitchroll_lk, label='LK')
-        # plt.plot(offset_pitchroll_gyro, label='Gyro')
-        # plt.plot(offset_gnd_dat, label='Ground Truth')
-        # plt.legend()
-        # plt.title(f"TEST: scaled LK data for {self.mode} mode")
-        # plt.xlabel("Index")
-        # plt.ylabel("Degrees")
-        # plt.show()
+        plt.figure()
+        plt.plot(scaled_pitchroll_lk, label='LK')
+        plt.plot(offset_pitchroll_gyro, label='Gyro')
+        plt.plot(offset_gnd_dat, label='Ground Truth')
+        plt.legend()
+        plt.title(f"TEST: scaled LK data for {self.mode} mode")
+        plt.xlabel("Index")
+        plt.ylabel("Degrees")
+        plt.show()
         
         return scaled_pitchroll_lk, offset_pitchroll_gyro, offset_gnd_dat
         
     def main_loop(self):
         lk, gyro, gnd_t = self.get_data()
-        
+            
         # breakpoint()
         start = 700 # change this to see different parts of data
         window = start + 100
         plt.ion()
         fig = plt.figure(figsize=(6, 4))
         ax1 = fig.add_subplot(211)
-        line1, = ax1.plot([], [], 'ro', label='KF')
-        line2, = ax1.plot([], [], 'bo', label='Ground Truth')
+        line1, = ax1.plot([], [], 'r,', label='KF')
+        line2, = ax1.plot([], [], 'b,', label='Ground Truth')
         ax1.set_xlim(start, window)
         ax2 = fig.add_subplot(212)
-        line3, = ax2.plot([], [], 'go', label='Residual pos')
-        line4, = ax2.plot([], [], 'mo', label='Residual vel')
+        line3, = ax2.plot([], [], 'g,', label='Residual pos')
+        line4, = ax2.plot([], [], 'm,', label='Residual vel')
         ax2.set_xlim(start, window)
         ax1.set_title("Kalman Filter")
         ax2.set_title("Residuals")
         ax1.set_xlabel("Index")
         ax1.set_ylabel("Rotation "+self.mode) # pitch or roll
         ax1.set_xlim(start, window)
-        ax1.set_ylim(-30, 30) # rance for lk and gnd truth
+        # ax1.set_ylim(-30, 30) # range for lk and gnd truth
         ax2.set_xlabel("Index")
         ax2.set_ylabel("Residuals")
         ax2.set_xlim(start, window)
         ax2.set_ylim(-10, 10)
         plt.tight_layout()
 
-        x_store, gnd_store, residuals_store, index = [], [], [], []
+        x_store, gnd_store, residuals_store_pos, residuals_store_vel, index = [], [], [], [], []
         # index = np.linspace(start, window, num=window-start)
         
         for i in range(start, window):
@@ -142,32 +143,31 @@ class Kalman_filtering:
             # update measurement, z, based on motion type
             if self.mode == "pitch":
                 self.kf.z = np.array([[float(lk[i]), 0., gyro[i], 0.]]).T
-                # x_ax, z_ax, res_ax_pos, res_ax_vel = ...
-                # state_key, residuals_key = ...
+                x_ax, res_ax_pos, res_ax_vel = 2, 0, 2
+                ax1.set_ylim(-30, 30)
             elif self.mode == "roll":
                 self.kf.z = np.array([[0., float(lk[i]), 0., gyro[i]]]).T
-                # x_ax, z_ax, res_ax_pos, res_ax_vel = ...
-                # state_key, residuals_key = ...
+                x_ax, res_ax_pos, res_ax_vel = 1, 1, 3
+                ax1.set_ylim(-10, 10)
             else: 
                 raise ValueError(f"Invalid mode: {self.mode}. Expected 'pitch' or 'roll'.")
             gnd_truth = gnd_t[i] # ground truth
             # self.kf.x, self.kf.P = 
             self.kf.update(z=self.kf.z, H=self.kf.H, R=self.kf.R) # update state with measurement
-            print() # is z being updated?? ------------
             # x = self.kf.x
             residuals = self.kf.y
             # kalman_filtering.live_plot(self, x, gnd_truth, residuals)
-            # print('x: ', self.kf.x)
+            print('x: ', self.kf.x)
             # print('F: ', self.kf.F)
-            # print('z: ', self.kf.z)
-            # print('gnd_truth: ', gnd_truth)
+            print('z: ', self.kf.z)
+            print('gnd_truth: ', gnd_truth)
             print('residuals: ', residuals)
             # print('z: ', self.kf.z)
             # print('x: ', self.kf.x)
-            x_store = np.append(x_store, self.kf.x[2])
+            x_store = np.append(x_store, self.kf.x[x_ax])
             gnd_store = np.append(gnd_store, gnd_truth)
-            residuals_store_pos = np.append(residuals_store, residuals[0])
-            residuals_store_vel = np.append(residuals_store, residuals[2])
+            residuals_store_pos = np.append(residuals_store_pos, residuals[res_ax_pos])
+            residuals_store_vel = np.append(residuals_store_vel, residuals[res_ax_vel])
             index = np.append(index, i)
             line1.set_data(index,x_store)
             line2.set_data(index,gnd_store)
