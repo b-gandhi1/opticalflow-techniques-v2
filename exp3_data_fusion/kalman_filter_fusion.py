@@ -34,6 +34,8 @@ class Kalman_filtering:
         self.kf.z = np.zeros((dim_z,1)) # initial output vector, z=measurements
         self.kf._I = np.eye(dim_x)
 
+        self.rmse_len = 0 # init for rmse len
+
     # KF - https://filterpy.readthedocs.io/en/latest/kalman/KalmanFilter.html 
     # use this guide - https://medium.com/@satya15july_11937/sensor-fusion-with-kalman-filter-c648d6ec2ec2 
         
@@ -102,7 +104,7 @@ class Kalman_filtering:
         plt.title(f"TEST: scaled LK data for {self.mode} mode")
         plt.xlabel("Index")
         plt.ylabel("Degrees")
-        plt.show()
+        plt.show(block=False)
         
         return scaled_pitchroll_lk, offset_pitchroll_gyro, offset_gnd_dat
     
@@ -112,11 +114,13 @@ class Kalman_filtering:
         # breakpoint()
         if window == "None": 
             start = 0
-            end = lk.shape[0] # use all data
+            end = 50 # investigating periodicity
+            # end = lk.shape[0] # use all data
         else:
             start = 700 # change this to see different parts of data
             end = start + window
-            
+        self.rmse_len = end - start # set rmse length
+        
         plt.ion()
         fig = plt.figure(figsize=(6, 4))
         ax1 = fig.add_subplot(211)
@@ -183,48 +187,77 @@ class Kalman_filtering:
             fig.canvas.draw()
             fig.canvas.flush_events()
             # plt.pause(1/FPS)
+            
+            # progress bar print
+            print("KF progress: {:.2f}%".format((i-start)/(end-start)*100), end='\r')
+            
         ax1.legend()
         ax2.legend()
         plt.ioff() # switch off before show
-        plt.show()
+        plt.show(block=False) # continue running after plot is shown
         
         return x_store
 
     def mc_sims_kf_loop(self): # Monte Carlo sim setup: 
-        import matplotlib
-        matplotlib.use('Agg')
+        # import matplotlib
+        # matplotlib.use('Agg') # supress any plt figures during the simulation runs
         
-        num_sims = 100 # number of simulation runs
+        num_sims = 5 # number of simulation runs
         print(f"Running {num_sims} Monte Carlo simulations for {self.mode} mode.")
         lk, gyro, gnd_t = self.get_data()
-        diff_abs_sq = np.empty() # store RMSE for each simulation
-        
+        # diff_abs_sq = np.empty([len(lk),num_sims]) # for rmse calc for each sim
+        diff_abs_sq = np.empty([50,num_sims])
+        # breakpoint()
         for i in range(num_sims):
-            noise_lk = np.random.normal(0, 0.1, lk.shape) + lk # add noise to LK data
-            noise_gyro = np.random.normal(0, 0.1, gyro.shape) + gyro # add noise to gyro data
+            print(f"Running simulation {i+1}/{num_sims} for {self.mode} mode.")
+            
+            noise_lk = np.random.normal(0, 0.5, lk.shape) + lk # add noise to LK data
+            noise_gyro = np.random.normal(0, 0.5, gyro.shape) + gyro # add noise to gyro data
             x_pred = self.kf_setup(lk=noise_lk, gyro=noise_gyro, gnd_t=gnd_t, window="None") # run KF with noisy data
             
-            plt.close('all') # suppress any plt fugures
-            
-            diff_abs_sq = np.append(diff_abs_sq, np.abs(x_pred - gnd_t)**2) # calculate absolute difference 
-            breakpoint()
-            print(f"Simulation {i+1}/{num_sims} completed, diff_abs_sq: {diff_abs_sq[-1]}")
-        rmse = np.sqrt(1/num_sims * np.sum(diff_abs_sq)) # calculate rmse
-        print(f"RMSE for {self.mode} mode: {rmse}")
+            # plt.close('all') # close any figures, just in case
+            # breakpoint()
+            diff_abs_sq[:,i] = np.abs(x_pred - gnd_t[:self.rmse_len])**2 # calculate absolute difference and store
+            # rows = time series data for each sim, col = data from each simulation num 
+            print(f"Simulation completed, diff_abs_sq has shape: {diff_abs_sq.shape}")
+        rmse = np.sqrt(1/num_sims * np.sum(diff_abs_sq, axis=1)) # calculate rmse
+        print(f"RMSE time series vector for {self.mode} mode has shape: {rmse.shape}")
+        
+        # matplotlib.use('TkAgg') # enable plt again
+        
+        plt.figure()
+        plt.plot(rmse, label='RMSE')
+        plt.title(f"Averaged RMSE from Monte Carlo Simulations for {self.mode} mode")
+        plt.xlabel("Index")
+        plt.ylabel("RMSE")
+        plt.legend()
+        plt.tight_layout()
+        plt.show(block=False) # continue running after plot is shown
+        # breakpoint()
             
 if __name__ == "__main__":
     kf = Kalman_filtering()
     kf.mode = sys.argv[1] # input mode: "pitch" | "roll"
     mc = sys.argv[2] if len(sys.argv) > 2 else "none" # monte carlo simulation mode
     
+    # franka_csv_path = 'imu-fusion-data/LK_'+pitchroll+'2/*euler_gnd*.csv' # gnd data
+    # imu_csv_path = 'imu-fusion-data/LK_'+pitchroll+'2/fibrescope*.csv' # imu data + pressure sensor data
+    # mcp_csv_path = 'imu-fusion-data/LK_'+pitchroll+'2/imu-fusion-outputs*.csv' # mcp data
+        
     try:
         if mc == "mc":
-            print(f"Running Monte Carlo simulation for {kf.mode} mode.")
+            # print(f"Running Monte Carlo simulation for {kf.mode} mode.")
             kf.mc_sims_kf_loop()
         else: 
-            print(f"Running Kalman Filter for {kf.mode} mode.")
+            # print(f"Running Kalman Filter for {kf.mode} mode.")
             lk, gyro, gnd_t = kf.get_data()
             kf.kf_setup(lk=lk, gyro=gyro, gnd_t=gnd_t, window=100)
+        print('All plots displayed, press any key to close all windows and exit on a figure window.')
+        while True: 
+            if plt.waitforbuttonpress():
+                plt.close('all')
+                break
+        raise SystemExit('Button pressed: Closing all windows and terminating the program.')
     except KeyboardInterrupt:
         plt.close('all')
         raise SystemExit('KeyBoardInterrupt: Exiting the program.')
