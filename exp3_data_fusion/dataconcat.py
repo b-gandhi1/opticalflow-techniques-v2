@@ -33,6 +33,7 @@ class Dataconcat():
             f['x_vals'] = self.normalize_vector(f['x_vals'])
             f['y_vals'] = self.normalize_vector(f['y_vals'])
             f['z_vals'] = self.normalize_vector(f['z_vals'])
+        # WHAT IS F ?????? -----------------------------------!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         
         concatenated_mcp = pd.concat(data_frames_mcp, ignore_index=True, axis='index')
         # print(concatenated_mcp.shape)
