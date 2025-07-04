@@ -76,10 +76,10 @@ class Kalman_filtering:
         elif self.mode == "roll":
             trim = 600
             pitchroll_lk = pitchroll_df.loc[trim:,'LKy']
-            pitchroll_gyro = pitchroll_df.loc[trim:,'IMU Ry']
+            pitchroll_gyro = pitchroll_df.loc[trim:,'IMU Ry'] * (-1)
             gnd_truth = pitchroll_df.loc[trim:,'Franka Rx'] * (-1)
-            offset_gnd = 52.0
-            offset_gyro = -11.2
+            offset_gnd = 48.3
+            offset_gyro = 2.5
             
         else:
             raise ValueError("Invalid mode. Choose 'pitch' or 'roll'. Current mode: {}".format(self.mode))
@@ -256,11 +256,16 @@ class Kalman_filtering:
         mcp_csv_path = 'imu-fusion-data/LK_'+self.mode+'2/imu-fusion-outputs*.csv' # mcp data
         
         skip_rows = 13 # skip first 13 rows from all dataframes
+        
+        # sort glob in ascending order, then remove the first file from each list due to artefacts in roll1.
         gnd_csv_files = sorted(glob.glob(franka_csv_path))
+        gnd_csv_files = gnd_csv_files[1:]
         data_frames_gnd = [pd.read_csv(f, usecols=['roll_x','pitch_y','yaw_z'],skiprows=range(1,skip_rows)) for f in gnd_csv_files]
         imu_csv_files = sorted(glob.glob(imu_csv_path))
+        imu_csv_files = imu_csv_files[1:]
         data_frames_imu = [pd.read_csv(f, usecols=['Pressure (kPa)','IMU X','IMU Y','IMU Z'],skiprows=range(1,skip_rows)) for f in imu_csv_files]
         mcp_csv_files = sorted(glob.glob(mcp_csv_path))
+        mcp_csv_files = mcp_csv_files[1:]
         data_frames_mcp = [pd.read_csv(f, usecols=['x_vals','y_vals','z_vals'],skiprows=range(1,skip_rows)) for f in mcp_csv_files]
         
         for f in data_frames_mcp:
@@ -279,10 +284,10 @@ class Kalman_filtering:
                 offset_gyro = 0.0
             elif self.mode == "roll":
                 pitchroll_lk = data_frames_mcp[i].loc[:,'y_vals']
-                pitchroll_gyro = data_frames_imu[i].loc[:,'IMU Y']
+                pitchroll_gyro = data_frames_imu[i].loc[:,'IMU Y'] * (-1)
                 gnd_truth = data_frames_gnd[i].loc[:,'roll_x'] * (-1)
-                offset_gnd = 52.0
-                offset_gyro = -11.2
+                offset_gnd = 48.3
+                offset_gyro = 2.5
             else:
                 raise ValueError("Invalid mode. Choose 'pitch' or 'roll'. Current mode: {}".format(self.mode))
             
