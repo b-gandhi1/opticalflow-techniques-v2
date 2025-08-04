@@ -57,8 +57,7 @@ def hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, 
         offset_gnd_dat = offset_gnd_dat[time_offset:]
         # print("Hysteresis test for roll window: ", window_len)
     else: 
-        print("ERROR: Invalid pitchroll")
-        sys.exit(1)
+        SystemError("ERROR: Invalid pitchroll input, exiting script")
     loading_df = pd.DataFrame(index=None)
     gnd_load_df = pd.DataFrame(index=None)
     unloading_df = pd.DataFrame(index=None)
@@ -106,6 +105,7 @@ def hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, 
     ax1.plot(t_load, gnd_load_avg, 'b--', label='gnd')
     ax1.set_xlabel('Time (s), MAE: '+str(round(abs(gnd_load_avg - loading_avg).mean(),3)))
     ax1.set_ylabel('Loading Angle (deg)')
+    ax1.set_ylim([loading_df.min().min()-5, loading_df.max().max()+5])
     ax1.legend()
     # mean_abs_error1 = abs(gnd_load_avg - loading_avg).mean() # MAE
     
@@ -114,6 +114,7 @@ def hysteresis_test(pitchrollN, spacing, pitchroll, time_period, norm_exp_data, 
     ax2.plot(t_unload, gnd_unload_avg, 'b--', label='gnd')
     ax2.set_xlabel('Time (s), MAE: '+str(round(abs(gnd_unload_avg - unloading_avg).mean(),3)))
     ax2.set_ylabel('Unloading Angle (deg)')
+    ax2.set_ylim([unloading_df.min().min()-5, unloading_df.max().max()+5])
     ax2.legend()
     # ax2.tight_layout()
     # mean_abs_error2 = abs(gnd_unload_avg - unloading_avg).mean() # MAE
@@ -158,8 +159,7 @@ def corr_calc(pitchrollN, pitchroll, num, spacing):
         gnd_data_all[gnd_ax] = gnd_data_all[gnd_ax] * (-1)
         
     else:
-        print("Invalid pitchroll input")
-        sys.exit(1)
+        SystemExit("Invalid pitchroll input")
 
     experimental_data = experimental_data_all[exp_ax]
     # print("max = ", experimental_data.max(), "    min = ", experimental_data.min())
@@ -219,8 +219,7 @@ def cross_corr():
         elif skinspitchroll == "skins-roll":
             ax = "y_vals"
         else:
-            print("ERROR: Invalid pitchroll, exiting script.")
-            sys.exit(1)
+            SystemExit("ERROR: Invalid pitchroll, exiting script.")
             
         for i in range(0,5):
             def_dat = pd.read_csv(spacing10[i], delimiter=',', usecols={ax}, dtype={ax: float}, skiprows=[j for j in range(1,13)])
@@ -272,4 +271,4 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         plt.close()
-        sys.exit(1)
+        SystemExit("KeyboardInterrupt: Exiting script")
