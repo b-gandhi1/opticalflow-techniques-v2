@@ -9,7 +9,7 @@ import sys
 import os
 from sklearn.preprocessing import MinMaxScaler
 # from exp3_data_fusion.dataconcat import Dataconcat # import dataconcat class for data normalisation
-from dataconcat import Dataconcat # import normalise vector function from dataconcat class
+# from dataconcat import Dataconcat # import normalise vector function from dataconcat class
 from scipy.linalg import block_diag
 from filterpy.common import Q_discrete_white_noise
 
@@ -117,6 +117,22 @@ class Kalman_filtering:
         
         return scaled_pitchroll_lk, offset_pitchroll_gyro, offset_gnd_dat
     
+    def synthetic_data(self):
+        # generate synthetic data for testing
+        print("Generating synthetic data for testing.")
+        num_samples = 300
+        time = np.linspace(0, num_samples/FPS, num_samples)
+        lk = np.sin(2 * np.pi * 0.1 * time) * 20 + np.random.normal(0, 1, num_samples)
+        gyro = np.sin(2 * np.pi * 0.1 * time) * 20 + np.random.normal(0, 0.5, num_samples)
+        gnd = np.sin(2 * np.pi * 0.1 * time) * 20
+        plt.figure()
+        plt.plot(time, lk, label='LK_syn')
+        plt.plot(time, gyro, label='Gyro_syn')
+        plt.plot(time, gnd, label='Gnd_syn')
+        plt.legend()    
+        plt.show(block=False)
+        return lk, gyro, gnd
+    
     def kf_setup(self, lk, gyro, gnd_t, window): # setup KF, get data    
         # lk, gyro, gnd_t = self.get_data()
         # breakpoint()
@@ -160,7 +176,7 @@ class Kalman_filtering:
             # self.kf.x, self.kf.P = 
             self.kf.predict(F=self.kf.F,Q=self.kf.Q) # update x
             # update measurement, z, based on motion type
-            if self.mode == "pitch":
+            if self.mode == "pitch" or self.mode == "none":
                 self.kf.z = np.array([[float(lk[i]), 0., gyro[i], 0.]]).T
                 x_ax, res_ax_pos, res_ax_vel = 2, 0, 2
                 ax1.set_ylim(-30, 30)
@@ -215,8 +231,8 @@ class Kalman_filtering:
         # print(f"Running {num_sims} Monte Carlo simulations for concatenated data, {self.mode} mode.")
         # lk, gyro, gnd_t = self.get_data()
         diff_abs_sq = np.empty([len(lk),num_sims]) # for rmse calc for each sim
-        diff_mcp = np.empty_like(diff_abs_sq) # for rmse_mcp calc
-        diff_gyro = np.empty_like(diff_abs_sq) # for rmse_gyro calc
+        diff_mcp = diff_abs_sq.copy() # for rmse_mcp calc
+        diff_gyro = diff_abs_sq.copy() # for rmse_gyro calc
         # diff_abs_sq = np.empty([50,num_sims])
         # breakpoint()
         for i in range(num_sims):
@@ -342,12 +358,16 @@ class Kalman_filtering:
             rmse[:,i], mse[:,i], rmse_mcp[:,i], rmse_gyro[:,i] = self.mc_sims_kf_loop(lk=scaled_pitchroll_lk, gyro=offset_pitchroll_gyro, gnd_t=offset_gnd_dat)
         # calculate mean rmse across all datasets
         mean_rmse, mean_mse, mean_rmse_mcp, mean_rmse_gyro = np.mean(rmse, axis=1), np.mean(mse, axis=1), np.mean(rmse_mcp, axis=1), np.mean(rmse_gyro, axis=1)
+        ones = np.ones_like(mean_rmse) # for plotting
         print(f"Mean RMSE time series vector for {self.mode} mode has shape: {mean_rmse.shape}")
         plt.figure()
-        plt.plot(ts,mean_rmse, label='Mean RMSE')
+        plt.plot(ts,mean_rmse,'-b', label='Mean RMSE')
+        plt.plot(ts,ones*np.mean(mean_rmse), '--b')
         # plt.plot(ts,mean_mse, label='Mean MSE')
-        plt.plot(ts, mean_rmse_mcp, label='Mean RMSE MCP')
-        plt.plot(ts, mean_rmse_gyro, label='Mean RMSE Gyro')
+        plt.plot(ts, mean_rmse_mcp, '-g', label='Mean RMSE MCP')
+        plt.plot(ts, ones*np.mean(mean_rmse_mcp), '--g')
+        plt.plot(ts, mean_rmse_gyro, '-r', label='Mean RMSE Gyro')
+        plt.plot(ts, ones*np.mean(mean_rmse_gyro), '--r')
         plt.xlabel("Time (s)")
         plt.ylabel("RMSE (deg)")
         plt.legend()
@@ -365,6 +385,9 @@ if __name__ == "__main__":
             
             # kf.mc_sims_kf_loop(lk=lk, gyro=gyro, gnd_t=gnd_t)
             kf.data_indv_mc_sims()
+        elif kf.mode == 'none' and mc == "test": # test with synthetic data
+            lk_syn, gyro_syn, gnd_t_syn = kf.synthetic_data()
+            kf.kf_setup(lk=lk_syn, gyro=gyro_syn, gnd_t=gnd_t_syn, window="None")
         else: 
             lk, gyro, gnd_t = kf.get_data()
             kf.kf_setup(lk=lk, gyro=gyro, gnd_t=gnd_t, window=100)

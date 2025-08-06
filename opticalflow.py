@@ -134,16 +134,14 @@ def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,num): # Lucas-Kanade,
                                 useHarrisDetector = False, # Shi-Tomasi better for corner detection than Harris for fibrescope. 
                                 k = 0.04 ) # something to do with area density, starts centrally. high values spread it out. low values keep it dense.
         else: 
-            print("ERROR: Please enter a valid argument for pin spacing.")
-            exit()
+            SystemExit("ERROR: Please enter a valid argument for pin spacing.")
 
         lk_params = dict( winSize = (45, 45),
                     maxLevel = 2,
                     criteria = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
     
     else:
-        print("ERROR: Please enter a valid argument for imaging method used.")
-        exit()
+        SystemError("ERROR: Please enter a valid argument for imaging method used.")
         
     # Parameters for lucas kanade optical flow
     # lk_params = dict( winSize  = (45, 45),
@@ -250,12 +248,12 @@ def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,num): # Lucas-Kanade,
     # save tensors: 
     x_val_tensor = torch.stack(x_val_tensor, dim=0)
     y_val_tensor = torch.stack(y_val_tensor, dim=0)
-    ptfiles = os.path.dirname(savefilename) # directory of savefilename
+    # ptfiles = os.path.dirname(savefilename) # directory of savefilename
     # num = max((int(num) for file in ptfiles for num in re.findall(r'\d+', os.path.splitext(file)[0])), default=0)+1
-    torch.save(x_val_tensor, ptfiles+'/tensor_x_val'+pitchroll+str(num)+'.pt')
-    torch.save(y_val_tensor, ptfiles+'/tensor_y_val'+pitchroll+str(num)+'.pt')
+    torch.save(x_val_tensor, savefilename+'/tensor_x_val'+pitchroll+str(num)+'.pt')
+    torch.save(y_val_tensor, savefilename+'/tensor_y_val'+pitchroll+str(num)+'.pt')
     LK_Zavg = pd.DataFrame({"x_vals":x_val_store, "y_vals":y_val_store, "z_vals":z_val_store}, dtype=float)
-    LK_Zavg.to_csv(ptfiles+'/skins-'+pitchroll+str(num)+'.csv') # save csv file for z vals
+    LK_Zavg.to_csv(savefilename+'/part-'+pitchroll+str(num)+'.csv') # save csv file for z vals
 
 # def OF_GF(cap,ref_frame,img_process,savefilename,mask): # Gunnar-Farneback, dense optical flow
     # keeps getting killed... not sure why. 
@@ -375,11 +373,11 @@ def blobdetect(cap,img_process,savefilename):
     with open(savefilename, 'wb+') as file: # filename needs to be 'sth.pkl'
         pickle.dump(data_history, file)
 
-def main(img_process_selector,loadpath,inp_path,pitchroll,i):
+def main(img_process_selector,loadpath,inp_path,pitchroll,i,savefilename):
     # read video opencv
     # video_path = input('Enter input video path: ')
     cap = cv.VideoCapture(loadpath) # insert video path
-    if not cap.isOpened(): print("ERROR: Cannot open camera/video file.")
+    if not cap.isOpened(): raise ValueError("ERROR: Cannot open camera/video file.")
 
     # # set size
     # cap.set(cv.CAP_PROP_FRAME_WIDTH,640)
@@ -417,33 +415,14 @@ def main(img_process_selector,loadpath,inp_path,pitchroll,i):
     ref_frame = img_process(ref_frame) # was: (cap,ref_frame)
     cv.imshow('reference frame after filtering',ref_frame)
     # filenames to save output data: 
-    savefilename_LK = os.path.join('skins-test-outputs', inp_path+'_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
+    # savefilename_LK = os.path.join('participant_data', inp_path+'_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
     # savefilename_LK = 'OF_outputs/trial.pkl'
     # savefilename_GF = os.path.join('OF_outputs','GF_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
     # savefilename_BD = os.path.join('OF_outputs/data4_feb2024','BD_binary_web_'+time.strftime("%Y-%m-%d_%H-%M-%S")+'.pkl')
 
-    # # multiprocess the 4 methods together
-    # OF_LK_process = mp.Process(target=OF_LK, args=(cap,ref_frame,img_process,savefilename_LK))
-    # OF_GF_process = mp.Process(target=OF_GF, args=(cap,ref_frame,img_process,savefilename_GF,mask_GF))
-    # # OF_HS_process = mp.Process(target=OF_HS, args=(cap,ref_frame,img_process))
-    # blobdetect_process = mp.Process(target=blobdetect, args=(cap,img_process,savefilename_BD))
-
     try: 
-        # # start multi-processes
-        # OF_LK_process.start()
-        # OF_GF_process.start()
-        # # OF_HS_process.start()
-        # blobdetect_process.start()
-
-        # # finish multi together
-        # OF_LK_process.join()
-        # OF_GF_process.join()
-        # # OF_HS_process.join()
-        # blobdetect_process.join()
-        # print('All processes have finished.')
         
-        # not using multi-processing: 
-        OF_LK(cap,ref_frame,img_process,savefilename_LK,pitchroll,i)
+        OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,i)
         
         # take reference frame - reset cap frame number. 
         if img_process_selector == 'w':
@@ -470,14 +449,17 @@ if __name__ == '__main__':
     
     inp_path = sys.argv[1] # pitchN or rollN where N = 1:8
     
-    inp_space = sys.argv[2] # spacing: 0-5 | 1-0 | 1-5
+    inp_space = "1-0" # inp_space = sys.argv[2] # spacing: 0-5 | 1-0 | 1-5
+    
+    inp_path_full = sys.argv[2] # full path to video file
+    savefilename = sys.argv[3] # save filename, added for participants
     
     # eg command: python opticalflow.py f pitch1
     
     length = len(inp_path)
     pitchroll, i = inp_path[:length-1], inp_path[length-1] # split number at the endfrom filename 
 
-    pitchroll_path = glob.glob("data_collection_with_franka/B07LabTrials/skins-data/cm"+inp_space+"/"+pitchroll+"/fibrescope-*"+i+".mp4")[0]
+    # pitchroll_path = glob.glob("data_collection_with_franka/B07LabTrials/skins-data/cm"+inp_space+"/"+pitchroll+"/fibrescope-*"+i+".mp4")[0]
 
     # if pitchroll == "pitch":
     #     pitchroll_path = "skins-data/cm"+inp_space+pitchroll+"/fibrescope"+i
@@ -485,8 +467,7 @@ if __name__ == '__main__':
     #     pitchroll_path = "roll_22-aug-2024/fibrescope"+i
     # else:
     #     print("ERROR: Unrecognised input for pressure selector.")
+    # inp_path_full = pitchroll_path
     
-    inp_path_full = pitchroll_path
-    
-    main(img_process_selector,inp_path_full,inp_path,pitchroll,i)
+    main(img_process_selector,inp_path_full,inp_path,pitchroll,i,savefilename)
     
