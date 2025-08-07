@@ -25,7 +25,8 @@ DESIREDHEIGHT = 480
 CONTRAST = 3
 BRIGHTNESS = 5
 
-inp_space = "" # global var
+inp_space = "" # global var, default
+# inp_space = "1-0" # for participant study
 
 # def fibrescope_process(cap,frame):
 def fibrescope_process(frame):
