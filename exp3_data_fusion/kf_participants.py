@@ -47,11 +47,7 @@ class Kalman_filtering:
         
         return normalized_vector
     
-    def get_part_data(self): # obtain participant (part) data 
-        pass
-    
     def kf_setup(self, lk, gyro, gnd_t, window): # setup KF, get data    
-
         start = 0
         end = lk.shape[0] # use all data
 
@@ -121,45 +117,35 @@ class Kalman_filtering:
         plt.show(block=False) # continue running after plot is shown
         
         return x_store
-    def rmse_calc(self, lk, gyro, gnd_t): # WHAT IS THIS ????????
-
-        diff_abs_sq = np.empty_like(lk) # for rmse calc for each sim
-        diff_mcp = diff_abs_sq.copy() # for rmse_mcp calc
-        diff_gyro = diff_abs_sq.copy() # for rmse_gyro calc
-
-        x_pred = self.kf_setup(lk=lk, gyro=gyro, gnd_t=gnd_t, window="None") # run KF with noisy data
+    
+    def performance_metrics(self, kf_preds, lk, gyro, gnd_t, tot): # Monte Carlo sim setup: 
+        tot = float(tot[-1])
         
-
-        diff_abs_sq[:] = np.abs(x_pred - gnd_t[:self.rmse_len])**2 # calculate absolute difference and store
-        # breakpoint()
-        diff_mcp[:] = np.abs(lk.flatten() - gnd_t[:self.rmse_len])**2 # calculate absolute difference for mcp data
-        diff_gyro[:] = np.abs(gyro.flatten() - gnd_t[:self.rmse_len])**2 # calculate absolute difference for gyro data
-        # rows = time series data for each sim, col = data from each simulation num 
-        print(f"Simulation completed, diff_abs_sq has shape: {diff_abs_sq.shape}")
+        diff_sq = np.abs(kf_preds - gnd_t)**2
+        diff_sq_mcp = np.abs(kf_preds - lk)**2
+        diff_sq_gyro = np.abs(kf_preds - gyro)**2
         
-        mse = 1/num_sims * np.sum(diff_abs_sq, axis=1) # calculate mean squared error
-        rmse = np.sqrt(mse) # calculate rmse
-        rmse_mcp = np.sqrt(1/num_sims * np.sum(diff_mcp, axis=1)) # calculate rmse for mcp data
-        rmse_gyro = np.sqrt(1/num_sims * np.sum(diff_gyro, axis=1)) # calculate rmse for gyro data
+        mse = 1/tot * np.sum(diff_sq, axis=1) # mean across all trials
+        rmse = np.sqrt(mse) # root mean square error
+        mse_mcp = 1/tot * np.sum(diff_sq_mcp, axis=1) # mean square error for mcp data
+        rmse_mcp = np.sqrt(mse_mcp) # rmse for mcp data
+        mse_gyro = 1/tot * np.sum(diff_sq_gyro, axis=1) # mean square error for gyro data
+        rmse_gyro = np.sqrt(mse_gyro) # rmse for gyro data
         
-        print(f"RMSE time series vector for {self.mode} mode has shape: {rmse.shape}")
-
-        return rmse, mse, rmse_mcp, rmse_gyro
+        return mse, rmse, mse_mcp, rmse_mcp, mse_gyro, rmse_gyro
     
     def data_indv_mc_sims(self):
         
-        print(f"Running Monte Carlo simulations for individual datasets {self.mode} mode.")
+        print(f"Running datasets for {self.mode} mode.")
         
-        # franka_csv_path = 'imu-fusion-data/LK_'+self.mode+'4/*euler_gnd*.csv' # gnd data
-        # imu_csv_path = 'imu-fusion-data/LK_'+self.mode+'4/fibrescope*.csv' # imu data + pressure sensor data
-        # mcp_csv_path = 'imu-fusion-data/LK_'+self.mode+'4/imu-fusion-outputs*.csv' # mcp data
-        
-        polaris_csv_path = 
-        imu_csv_path = 
-        mcp_csv_path = 
+        # paths for participant data: 
+        polaris_csv_path = ...
+        imu_csv_path = ...
+        mcp_csv_path = ...
         
         # sort glob in ascending order, then remove the first file from each list due to artefacts in roll1.
-        gnd_csv_files = sorted(glob.glob(franka_csv_path))
+        gnd_csv_files = sorted(glob.glob(polaris_csv_path))
+        # gnd_csv_files = sorted(glob.glob(polaris_csv_path))
         # gnd_csv_files = gnd_csv_files[1:]
         data_frames_gnd = [pd.read_csv(f, usecols=['roll_x','pitch_y','yaw_z']) for f in gnd_csv_files]
         imu_csv_files = sorted(glob.glob(imu_csv_path))
@@ -173,11 +159,11 @@ class Kalman_filtering:
             f['x_vals'] = self.normalize_vector(f['x_vals'])
             f['y_vals'] = self.normalize_vector(f['y_vals'])
             f['z_vals'] = self.normalize_vector(f['z_vals'])
-        # breakpoint()
-        rmse = np.empty([len(data_frames_gnd[0]),len(data_frames_gnd)]) # init rmse 
-        mse = rmse.copy() # init mse
-        rmse_mcp = rmse.copy()
-        rmse_gyro = rmse.copy() 
+        # init stores for rmse calc after
+        lk_store = np.empty([len(data_frames_gnd[0]),len(data_frames_gnd)]) 
+        kf_preds_store = lk_store.copy()
+        gyro_store = lk_store.copy()
+        gnd_store = lk_store.copy() 
         
         ts = np.linspace(0, len(data_frames_gnd[0])/FPS, num=len(data_frames_gnd[0])) # time series for x-axis
 
@@ -222,27 +208,40 @@ class Kalman_filtering:
             plt.ylabel("Degrees")
             plt.show(block=False)
             
-            print(f"Running Monte Carlo simulations for dataset {i+1}/{len(data_frames_gnd)} for {self.mode} mode.")
-            rmse[:,i], mse[:,i], rmse_mcp[:,i], rmse_gyro[:,i] = self.mc_sims_kf_loop(lk=scaled_pitchroll_lk, gyro=offset_pitchroll_gyro, gnd_t=offset_gnd_dat)
+            print(f"Running for dataset {i+1}/{len(data_frames_gnd)} for {self.mode} mode.")
+            # run KF
+            x_pred = self.kf_setup(lk=scaled_pitchroll_lk, gyro=offset_pitchroll_gyro, gnd_t=offset_gnd_dat, window="None") # run KF
+
+            # store vars
+            lk_store[:,i] = scaled_pitchroll_lk.flatten() # store lk data
+            gyro_store[:,i] = offset_pitchroll_gyro.flatten() # store gyro data
+            gnd_store[:,i] = offset_gnd_dat.flatten() # store ground truth data
+            kf_preds_store[:,i] = x_pred.flatten() # store KF predictions
+
         # calculate mean rmse across all datasets
-        mean_rmse, mean_mse, mean_rmse_mcp, mean_rmse_gyro = np.mean(rmse, axis=1), np.mean(mse, axis=1), np.mean(rmse_mcp, axis=1), np.mean(rmse_gyro, axis=1)
-        ones = np.ones_like(mean_rmse) # for plotting
-        print(f"Mean RMSE time series vector for {self.mode} mode has shape: {mean_rmse.shape}")
-        plt.figure()
-        plt.plot(ts,mean_rmse,'-b', label='Mean RMSE')
-        plt.plot(ts,ones*np.mean(mean_rmse), '--b')
-        # plt.plot(ts,mean_mse, label='Mean MSE')
-        plt.plot(ts, mean_rmse_mcp, '-g', label='Mean RMSE MCP')
-        plt.plot(ts, ones*np.mean(mean_rmse_mcp), '--g')
-        plt.plot(ts, mean_rmse_gyro, '-r', label='Mean RMSE Gyro')
-        plt.plot(ts, ones*np.mean(mean_rmse_gyro), '--r')
+        mse, rmse, mse_mcp, rmse_mcp, mse_gyro, rmse_gyro = self.performance_metrics(kf_preds=kf_preds_store, lk=lk_store, gyro=gyro_store, gnd_t=gnd_store, tot=metrics_range)
+        ones = np.ones_like(ts) # for plotting
+        plt.figure(figsize=(15, 4))
+        plt.plot(ts,rmse,'-b', label='RMSE Gnd')
+        plt.plot(ts,ones*np.mean(rmse), '--b')
+        # plt.plot(ts,mse, '-c', label='MSE Gnd')
+        # plt.plot(ts,ones*np.mean(mse), '--c')
+        plt.plot(ts, rmse_mcp, '-g', label='RMSE MCP')
+        plt.plot(ts, ones*np.mean(rmse_mcp), '--g')
+        # plt.plot(ts, mse_mcp, '-m', label='MSE MCP')
+        # plt.plot(ts, ones*np.mean(mse_mcp), '--m')
+        plt.plot(ts, rmse_gyro, '-r', label='RMSE Gyro')
+        plt.plot(ts, ones*np.mean(rmse_gyro), '--r')
+        # plt.plot(ts, mse_gyro, '-y', label='MSE Gyro')
+        # plt.plot(ts, ones*np.mean(mse_gyro), '--y')
+        
         plt.xlabel("Time (s)")
         plt.ylabel("RMSE (deg)")
         plt.legend()
         plt.tight_layout()
         plt.show(block=False)
-        print(f"Maximum RMSE: {np.max(mean_rmse)}, Minimum RMSE: {np.min(mean_rmse)}")
-        print(f"Maximum MSE: {np.max(mean_mse)}, Minimum MSE: {np.min(mean_mse)}")
+        print(f"Maximum RMSE: {np.max(rmse)}, Minimum RMSE: {np.min(rmse)}")
+        print(f"Maximum MSE: {np.max(mse)}, Minimum MSE: {np.min(mse)}")
 
 if __name__ == "__main__":
     kf = Kalman_filtering()

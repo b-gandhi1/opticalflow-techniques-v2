@@ -24,46 +24,76 @@ class ParticipantDataSort:
         file_path = glob.glob(f"data_collection_with_franka/B07LabTrials/participant-data/participant{str(i)}/fibrescope-{self.pitchroll}{str(j)}*.csv")[0]
         if not file_path:
             raise FileNotFoundError(f"No CSV file found for participant {i} with {self.pitchroll} {j}.")
-        imu_df = pd.read_csv(file_path,columns=['IMU X', 'IMU Y', 'IMU Z'])
-        polaris_df = pd.read_csv(file_path,columns=['Polaris Rx', 'Polaris Ry', 'Polaris Rz'])
+        imu_df = pd.read_csv(file_path,usecols=['IMU X', 'IMU Y', 'IMU Z'])
+        polaris_df = pd.read_csv(file_path,usecols=['Polaris Rx', 'Polaris Ry', 'Polaris Rz'])
         
         # plot figures to check data
+        # plt.figure(figsize=(10, 5))
+        # plt.subplot(1, 2, 1)
+        # plt.plot(imu_df['IMU X'], label='IMU X')
+        # plt.plot(imu_df['IMU Y'], label='IMU Y')
+        # plt.plot(imu_df['IMU Z'], label='IMU Z')
+        # plt.title(f'IMU Data - Participant {i} {self.pitchroll} {j}')
+        # plt.xlabel('Time')
+        # plt.ylabel('IMU Values')
+        # plt.legend()
+
+        # plt.subplot(1, 2, 2)
+        # plt.plot(polaris_df['Polaris Rx'], label='Polaris Rx')
+        # plt.plot(polaris_df['Polaris Ry'], label='Polaris Ry')
+        # plt.plot(polaris_df['Polaris Rz'], label='Polaris Rz')
+        # plt.title(f'Polaris Data - Participant {i} {self.pitchroll} {j}')
+        # plt.xlabel('Time')
+        # plt.ylabel('Polaris Values')
+        # plt.legend()
+
+        # plt.tight_layout()
+        
+        return imu_df, polaris_df
+    
+    def transform_polaris_imu(self, imu_df, polaris_df,i,j):
+        # Transform polaris and imu data using offset and any necessary rotations, and select apt axes
+        
+        if self.pitchroll == "pitch":
+            imu_df_fin = imu_df['IMU X'] - imu_df['IMU X'].iloc[:5].mean()
+            polaris_df_fin = polaris_df['Polaris Rz'] * (-1) - (polaris_df['Polaris Rz'].iloc[:5] * (-1)).mean()
+        elif self.pitchroll == "roll":
+            imu_df_fin = imu_df['IMU Y'] - imu_df['IMU Y'].iloc[:5].mean()
+            polaris_df_fin = polaris_df['Polaris Ry'] - polaris_df['Polaris Ry'].iloc[:5].mean()
+        else:
+            raise ValueError("Invalid pitchroll value. Use 'pitch' or 'roll'.")
+        
+        # plot, check data
         plt.figure(figsize=(10, 5))
-        plt.subplot(1, 2, 1)
-        plt.plot(imu_df['IMU X'], label='IMU X')
-        plt.plot(imu_df['IMU Y'], label='IMU Y')
-        plt.plot(imu_df['IMU Z'], label='IMU Z')
-        plt.title(f'IMU Data - Participant {i} {self.pitchroll} {j}')
+        plt.plot(imu_df_fin, label=imu_df.columns[0])
+        plt.plot(polaris_df_fin, label=polaris_df.columns[0])
+        plt.title(f'Polaris and IMU Data - Participant {i} {self.pitchroll} {j}')
         plt.xlabel('Time')
-        plt.ylabel('IMU Values')
+        plt.ylabel('Degrees')
         plt.legend()
-
-        plt.subplot(1, 2, 2)
-        plt.plot(polaris_df['Polaris Rx'], label='Polaris Rx')
-        plt.plot(polaris_df['Polaris Ry'], label='Polaris Ry')
-        plt.plot(polaris_df['Polaris Rz'], label='Polaris Rz')
-        plt.title(f'Polaris Data - Participant {i} {self.pitchroll} {j}')
-        plt.xlabel('Time')
-        plt.ylabel('Polaris Values')
-        plt.legend()
-
-        plt.tight_layout()
 
     def main(self):
         
         # inp_space = "1-0" # set spacing for participant study, KLT extraction.
         
-        for i in range(1,10+1):
-            for j in range(1,2+1):
-            
-                # # obtain KLT files and save them: 
-                self.pitchroll = "pitch"
-                # self.extract_klt(i,j)
-                self.plot_polaris_imu(i,j)
-                
-                self.pitchroll = "roll"
-                # self.extract_klt(i,j)
-                self.plot_polaris_imu(i,j)
+        self.pitchroll = "pitch"
+        self.transform_polaris_imu(*self.plot_polaris_imu(1,2),1,2)
+        # self.pitchroll = "roll"
+        # self.transform_polaris_imu(*self.plot_polaris_imu(1,3),1,3)
+        
+        # for i in range(1,10+1):
+        #     # for j in range(1,3+1):
+        #         j=3
+        #         # obtain KLT files and save them: 
+        #         self.pitchroll = "pitch"
+        #         # self.extract_klt(i,j)
+        #         # self.plot_polaris_imu(i,j)
+        #         self.transform_polaris_imu(*self.plot_polaris_imu(i,j),i,j)
+        
+        #         self.pitchroll = "roll"
+        #         # self.extract_klt(i,j)
+        #         # self.plot_polaris_imu(i,j)
+        #         self.transform_polaris_imu(*self.plot_polaris_imu(i,j),i,j)
         plt.show()
 
 

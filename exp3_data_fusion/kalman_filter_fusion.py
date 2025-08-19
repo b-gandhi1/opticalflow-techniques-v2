@@ -1,15 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-#from sklearn.model_selection import train_test_split, cross_val_score, cross_validate
-#from sklearn.metrics import (accuracy_score, confusion_matrix, ConfusionMatrixDisplay, f1_score, classification_report, roc_curve, RocCurveDisplay, auc)
-from filterpy.kalman import KalmanFilter#, UnscentedKalmanFilter, MerweScaledSigmaPoints
+from filterpy.kalman import KalmanFilter
 import glob 
 import sys
 import os
 from sklearn.preprocessing import MinMaxScaler
-# from exp3_data_fusion.dataconcat import Dataconcat # import dataconcat class for data normalisation
-# from dataconcat import Dataconcat # import normalise vector function from dataconcat class
 from scipy.linalg import block_diag
 from filterpy.common import Q_discrete_white_noise
 
@@ -46,6 +42,14 @@ class Kalman_filtering:
     # KF - https://filterpy.readthedocs.io/en/latest/kalman/KalmanFilter.html 
     # use this guide - https://medium.com/@satya15july_11937/sensor-fusion-with-kalman-filter-c648d6ec2ec2 
         
+    def normalize_vector(self, vector):
+        min_value = np.min(vector)
+        max_value = np.max(vector)
+        
+        normalized_vector = (vector - min_value) / (max_value - min_value) * 2 - 1
+        
+        return normalized_vector
+    
     def get_data(self): # 
         # path_pitchroll = os.path.abspath(os.path.join(os.getcwd(), os.pardir,"imu-fusion-data/pitchroll_concat2"))
         path_pitchroll = os.path.join(os.getcwd(), "imu-fusion-data/pitchroll_concat3")
@@ -118,7 +122,7 @@ class Kalman_filtering:
         return scaled_pitchroll_lk, offset_pitchroll_gyro, offset_gnd_dat
     
     def synthetic_data(self):
-        # generate synthetic data for testing
+        # generate synthetic data for testing kf
         print("Generating synthetic data for testing.")
         num_samples = 300
         time = np.linspace(0, num_samples/FPS, num_samples)
@@ -147,25 +151,25 @@ class Kalman_filtering:
         print(f"RMSE length: {self.rmse_len}")
         # breakpoint()
         plt.ion()
-        fig = plt.figure(figsize=(6, 4))
+        fig = plt.figure(figsize=(10, 5))
         ax1 = fig.add_subplot(211)
         line1, = ax1.plot([], [], 'r.', label='KF')
         line2, = ax1.plot([], [], 'b.', label='Ground Truth')
         ax1.set_xlim(start/FPS, end/FPS)
-        ax2 = fig.add_subplot(212)
-        line3, = ax2.plot([], [], 'g.', label='Residual pos')
-        line4, = ax2.plot([], [], 'm.', label='Residual vel')
-        ax2.set_xlim(start/FPS, end/FPS)
-        ax1.set_title("Kalman Filter")
-        ax2.set_title("Residuals")
+        # ax2 = fig.add_subplot(212)
+        # line3, = ax2.plot([], [], 'g.', label='Residual pos')
+        # line4, = ax2.plot([], [], 'm.', label='Residual vel')
+        # ax2.set_xlim(start/FPS, end/FPS)
+        # ax1.set_title("Kalman Filter")
+        # ax2.set_title("Residuals")
         ax1.set_xlabel("Time (s)")
-        ax1.set_ylabel("Rotation "+self.mode) # pitch or roll
+        ax1.set_ylabel("Degrees - "+self.mode) # pitch or roll
         ax1.set_xlim(start/FPS, end/FPS)
-        # ax1.set_ylim(-30, 30) # range for lk and gnd truth
-        ax2.set_xlabel("Time (s)")
-        ax2.set_ylabel("Residuals")
-        ax2.set_xlim(start/FPS, end/FPS)
-        ax2.set_ylim(-10, 10)
+        ax1.set_ylim(-30, 30) # range for lk and gnd truth
+        # ax2.set_xlabel("Time (s)")
+        # ax2.set_ylabel("Residuals")
+        # ax2.set_xlim(start/FPS, end/FPS)
+        # ax2.set_ylim(-10, 10)
         plt.tight_layout()
         
         x_store, gnd_store, residuals_store_pos, residuals_store_vel, ts = [], [], [], [], []
@@ -187,18 +191,9 @@ class Kalman_filtering:
             else: 
                 raise ValueError(f"Invalid mode: {self.mode}. Expected 'pitch' or 'roll'.")
             gnd_truth = gnd_t[i] # ground truth
-            # self.kf.x, self.kf.P = 
             self.kf.update(z=self.kf.z, H=self.kf.H, R=self.kf.R) # update state with measurement
-            # x = self.kf.x
             residuals = self.kf.y
-            # kalman_filtering.live_plot(self, x, gnd_truth, residuals)
-            # print('x: ', self.kf.x)
-            # print('F: ', self.kf.F)
-            # print('z: ', self.kf.z)
-            # print('gnd_truth: ', gnd_truth)
-            # print('residuals: ', residuals)
-            # print('z: ', self.kf.z)
-            # print('x: ', self.kf.x)
+
             x_store = np.append(x_store, self.kf.x[x_ax])
             gnd_store = np.append(gnd_store, gnd_truth)
             residuals_store_pos = np.append(residuals_store_pos, residuals[res_ax_pos])
@@ -206,84 +201,42 @@ class Kalman_filtering:
             ts = np.append(ts, i/FPS)
             line1.set_data(ts,x_store)
             line2.set_data(ts,gnd_store)
-            line3.set_data(ts,residuals_store_pos)
-            line4.set_data(ts,residuals_store_vel)
+            # line3.set_data(ts,residuals_store_pos)
+            # line4.set_data(ts,residuals_store_vel)
 
             fig.canvas.draw()
             fig.canvas.flush_events()
-            # plt.pause(1/FPS)
             
-            # progress bar print
-            print("KF progress: {:.2f}%".format((i-start)/(end-start)*100), end='\r')
+            print("KF progress: {:.2f}%".format((i-start)/(end-start)*100), end='\r') # progress bar print
             
         ax1.legend()
-        ax2.legend()
+        # ax2.legend()
         plt.ioff() # switch off before show
         plt.show(block=False) # continue running after plot is shown
         
         return x_store
 
-    def mc_sims_kf_loop(self, lk, gyro, gnd_t): # Monte Carlo sim setup: 
-        # import matplotlib
-        # matplotlib.use('Agg') # supress any plt figures during the simulation runs
+    def performance_metrics(self, kf_preds, lk, gyro, gnd_t, tot): # Monte Carlo sim setup: 
+        tot = float(tot[-1])
         
-        num_sims = 1 # number of simulation runs
-        # print(f"Running {num_sims} Monte Carlo simulations for concatenated data, {self.mode} mode.")
-        # lk, gyro, gnd_t = self.get_data()
-        diff_abs_sq = np.empty([len(lk),num_sims]) # for rmse calc for each sim
-        diff_mcp = diff_abs_sq.copy() # for rmse_mcp calc
-        diff_gyro = diff_abs_sq.copy() # for rmse_gyro calc
-        # diff_abs_sq = np.empty([50,num_sims])
-        # breakpoint()
-        for i in range(num_sims):
-            print(f"Running simulation {i+1}/{num_sims} for {self.mode} mode.")
-            
-            # noise_lk = np.random.normal(0, 0.5, lk.shape) + lk # add noise to LK data
-            # noise_gyro = np.random.normal(0, 0.5, gyro.shape) + gyro # add noise to gyro data
-            x_pred = self.kf_setup(lk=lk, gyro=gyro, gnd_t=gnd_t, window="None") # run KF with noisy data
-            
-            # plt.close('all') # close any figures, just in case
-            # breakpoint()
-            diff_abs_sq[:,i] = np.abs(x_pred - gnd_t[:self.rmse_len])**2 # calculate absolute difference and store
-            # breakpoint()
-            diff_mcp[:,i] = np.abs(lk.flatten() - gnd_t[:self.rmse_len])**2 # calculate absolute difference for mcp data
-            diff_gyro[:,i] = np.abs(gyro.flatten() - gnd_t[:self.rmse_len])**2 # calculate absolute difference for gyro data
-            # rows = time series data for each sim, col = data from each simulation num 
-            print(f"Simulation completed, diff_abs_sq has shape: {diff_abs_sq.shape}")
+        diff_sq = np.abs(kf_preds - gnd_t)**2
+        diff_sq_mcp = np.abs(kf_preds - lk)**2
+        diff_sq_gyro = np.abs(kf_preds - gyro)**2
         
-        mse = 1/num_sims * np.sum(diff_abs_sq, axis=1) # calculate mean squared error
-        rmse = np.sqrt(mse) # calculate rmse
-        rmse_mcp = np.sqrt(1/num_sims * np.sum(diff_mcp, axis=1)) # calculate rmse for mcp data
-        rmse_gyro = np.sqrt(1/num_sims * np.sum(diff_gyro, axis=1)) # calculate rmse for gyro data
+        mse = 1/tot * np.sum(diff_sq, axis=1) # mean across all trials
+        rmse = np.sqrt(mse) # root mean square error
+        mse_mcp = 1/tot * np.sum(diff_sq_mcp, axis=1) # mean square error for mcp data
+        rmse_mcp = np.sqrt(mse_mcp) # rmse for mcp data
+        mse_gyro = 1/tot * np.sum(diff_sq_gyro, axis=1) # mean square error for gyro data
+        rmse_gyro = np.sqrt(mse_gyro) # rmse for gyro data
         
-        print(f"RMSE time series vector for {self.mode} mode has shape: {rmse.shape}")
-        
-        # matplotlib.use('TkAgg') # enable plt again
-        
-        # plt.figure()
-        # plt.plot(rmse, label='RMSE')
-        # plt.title(f"Averaged RMSE from Monte Carlo Simulations for {self.mode} mode")
-        # plt.xlabel("Index")
-        # plt.ylabel("RMSE")
-        # plt.legend()
-        # plt.tight_layout()
-        # plt.show(block=False) # continue running after plot is shown
-        # breakpoint()
-        
-        return rmse, mse, rmse_mcp, rmse_gyro
-    
-    def normalize_vector(self, vector):
-        min_value = np.min(vector)
-        max_value = np.max(vector)
-        
-        normalized_vector = (vector - min_value) / (max_value - min_value) * 2 - 1
-        
-        return normalized_vector
+        return mse, rmse, mse_mcp, rmse_mcp, mse_gyro, rmse_gyro
     
     def data_indv_mc_sims(self):
         
-        print(f"Running Monte Carlo simulations for individual datasets {self.mode} mode.")
+        print(f"Running datasets {self.mode} mode.")
         
+        # paths for mannequin datasets: 
         franka_csv_path = 'imu-fusion-data/LK_'+self.mode+'4/*euler_gnd*.csv' # gnd data
         imu_csv_path = 'imu-fusion-data/LK_'+self.mode+'4/fibrescope*.csv' # imu data + pressure sensor data
         mcp_csv_path = 'imu-fusion-data/LK_'+self.mode+'4/imu-fusion-outputs*.csv' # mcp data
@@ -306,14 +259,16 @@ class Kalman_filtering:
             f['y_vals'] = self.normalize_vector(f['y_vals'])
             f['z_vals'] = self.normalize_vector(f['z_vals'])
         # breakpoint()
-        rmse = np.empty([len(data_frames_gnd[0]),len(data_frames_gnd)]) # init rmse 
-        mse = rmse.copy() # init mse
-        rmse_mcp = rmse.copy()
-        rmse_gyro = rmse.copy() 
+        # init stores for rmse calc after
+        lk_store = np.empty([len(data_frames_gnd[0]),len(data_frames_gnd)]) 
+        kf_preds_store = lk_store.copy()
+        gyro_store = lk_store.copy()
+        gnd_store = lk_store.copy() 
         
         ts = np.linspace(0, len(data_frames_gnd[0])/FPS, num=len(data_frames_gnd[0])) # time series for x-axis
-
-        for i in range(len(data_frames_gnd)):
+        
+        metrics_range = range(len(data_frames_gnd))
+        for i in metrics_range: # iterate over each dataset
             
             if self.mode == "pitch":
                 pitchroll_lk = data_frames_mcp[i].loc[:,'x_vals'] 
@@ -354,27 +309,39 @@ class Kalman_filtering:
             plt.ylabel("Degrees")
             plt.show(block=False)
             
-            print(f"Running Monte Carlo simulations for dataset {i+1}/{len(data_frames_gnd)} for {self.mode} mode.")
-            rmse[:,i], mse[:,i], rmse_mcp[:,i], rmse_gyro[:,i] = self.mc_sims_kf_loop(lk=scaled_pitchroll_lk, gyro=offset_pitchroll_gyro, gnd_t=offset_gnd_dat)
-        # calculate mean rmse across all datasets
-        mean_rmse, mean_mse, mean_rmse_mcp, mean_rmse_gyro = np.mean(rmse, axis=1), np.mean(mse, axis=1), np.mean(rmse_mcp, axis=1), np.mean(rmse_gyro, axis=1)
-        ones = np.ones_like(mean_rmse) # for plotting
-        print(f"Mean RMSE time series vector for {self.mode} mode has shape: {mean_rmse.shape}")
-        plt.figure()
-        plt.plot(ts,mean_rmse,'-b', label='Mean RMSE')
-        plt.plot(ts,ones*np.mean(mean_rmse), '--b')
-        # plt.plot(ts,mean_mse, label='Mean MSE')
-        plt.plot(ts, mean_rmse_mcp, '-g', label='Mean RMSE MCP')
-        plt.plot(ts, ones*np.mean(mean_rmse_mcp), '--g')
-        plt.plot(ts, mean_rmse_gyro, '-r', label='Mean RMSE Gyro')
-        plt.plot(ts, ones*np.mean(mean_rmse_gyro), '--r')
+            print(f"Running for dataset {i+1}/{len(data_frames_gnd)} for {self.mode} mode.")
+            x_pred = self.kf_setup(lk=scaled_pitchroll_lk, gyro=offset_pitchroll_gyro, gnd_t=offset_gnd_dat, window="None") # run KF
+
+            # store vars
+            lk_store[:,i] = scaled_pitchroll_lk.flatten() # store lk data
+            gyro_store[:,i] = offset_pitchroll_gyro.flatten() # store gyro data
+            gnd_store[:,i] = offset_gnd_dat.flatten() # store ground truth data
+            kf_preds_store[:,i] = x_pred.flatten() # store KF predictions
+
+        mse, rmse, mse_mcp, rmse_mcp, mse_gyro, rmse_gyro = self.performance_metrics(kf_preds=kf_preds_store, lk=lk_store, gyro=gyro_store, gnd_t=gnd_store, tot=metrics_range)
+        
+        ones = np.ones_like(ts) # for plotting
+        plt.figure(figsize=(15, 4))
+        plt.plot(ts,rmse,'-b', label='RMSE Gnd')
+        plt.plot(ts,ones*np.mean(rmse), '--b')
+        # plt.plot(ts,mse, '-c', label='MSE Gnd')
+        # plt.plot(ts,ones*np.mean(mse), '--c')
+        plt.plot(ts, rmse_mcp, '-g', label='RMSE MCP')
+        plt.plot(ts, ones*np.mean(rmse_mcp), '--g')
+        # plt.plot(ts, mse_mcp, '-m', label='MSE MCP')
+        # plt.plot(ts, ones*np.mean(mse_mcp), '--m')
+        plt.plot(ts, rmse_gyro, '-r', label='RMSE Gyro')
+        plt.plot(ts, ones*np.mean(rmse_gyro), '--r')
+        # plt.plot(ts, mse_gyro, '-y', label='MSE Gyro')
+        # plt.plot(ts, ones*np.mean(mse_gyro), '--y')
+        
         plt.xlabel("Time (s)")
         plt.ylabel("RMSE (deg)")
         plt.legend()
         plt.tight_layout()
         plt.show(block=False)
-        print(f"Maximum RMSE: {np.max(mean_rmse)}, Minimum RMSE: {np.min(mean_rmse)}")
-        print(f"Maximum MSE: {np.max(mean_mse)}, Minimum MSE: {np.min(mean_mse)}")
+        print(f"Maximum RMSE: {np.max(rmse)}, Minimum RMSE: {np.min(rmse)}")
+        print(f"Maximum MSE: {np.max(mse)}, Minimum MSE: {np.min(mse)}")
 
 if __name__ == "__main__":
     kf = Kalman_filtering()
