@@ -25,8 +25,8 @@ DESIREDHEIGHT = 480
 CONTRAST = 3
 BRIGHTNESS = 5
 
-inp_space = "" # global var, default
-# inp_space = "1-0" # for participant study
+# inp_space = "" # global var, default
+inp_space = "1-0" # for participant study
 
 # def fibrescope_process(cap,frame):
 def fibrescope_process(frame):
@@ -88,7 +88,6 @@ def z_brightness(frame): # use this to get average brightness of each frame
 def OF_LK(cap,ref_frame,img_process,savefilename,pitchroll,num): # Lucas-Kanade, sparse optical flow, local solution
     
     data_history = []
-    
     # create video writer: 
     # root = "imu-fusion-outputs"
     # filename = "fib_vid_"+pitchroll+i+'.mp4'
@@ -450,10 +449,11 @@ if __name__ == '__main__':
     
     inp_path = sys.argv[1] # pitchN or rollN where N = 1:8
     
-    inp_space = "1-0" # inp_space = sys.argv[2] # spacing: 0-5 | 1-0 | 1-5
+    # inp_space = "1-0" # 
+    inp_space = sys.argv[2] # spacing: 0-5 | 1-0 | 1-5
     
-    inp_path_full = sys.argv[2] # full path to video file
-    savefilename = sys.argv[3] # save filename, added for participants
+    inp_path_full = sys.argv[3] # full path to video file
+    savefilename = sys.argv[4] # save filename, added for participants
     
     # eg command: python opticalflow.py f pitch1
     

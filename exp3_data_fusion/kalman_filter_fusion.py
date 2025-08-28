@@ -129,7 +129,7 @@ class Kalman_filtering:
         lk = np.sin(2 * np.pi * 0.1 * time) * 20 + np.random.normal(0, 1, num_samples)
         gyro = np.sin(2 * np.pi * 0.1 * time) * 20 + np.random.normal(0, 0.5, num_samples)
         gnd = np.sin(2 * np.pi * 0.1 * time) * 20
-        plt.figure()
+        plt.figure(figsize=(10, 5))
         plt.plot(time, lk, label='LK_syn')
         plt.plot(time, gyro, label='Gyro_syn')
         plt.plot(time, gnd, label='Gnd_syn')
@@ -151,9 +151,9 @@ class Kalman_filtering:
         print(f"RMSE length: {self.rmse_len}")
         # breakpoint()
         plt.ion()
-        fig = plt.figure(figsize=(10, 5))
-        ax1 = fig.add_subplot(211)
-        line1, = ax1.plot([], [], 'r.', label='KF')
+        fig = plt.figure(figsize=(6, 5))
+        ax1 = fig.add_subplot(111)
+        line1, = ax1.plot([], [], 'r.', label='KF pred')
         line2, = ax1.plot([], [], 'b.', label='Ground Truth')
         ax1.set_xlim(start/FPS, end/FPS)
         # ax2 = fig.add_subplot(212)
@@ -163,9 +163,8 @@ class Kalman_filtering:
         # ax1.set_title("Kalman Filter")
         # ax2.set_title("Residuals")
         ax1.set_xlabel("Time (s)")
-        ax1.set_ylabel("Degrees - "+self.mode) # pitch or roll
+        ax1.set_ylabel(f"Degrees ({self.mode} motion)") # pitch or roll
         ax1.set_xlim(start/FPS, end/FPS)
-        ax1.set_ylim(-30, 30) # range for lk and gnd truth
         # ax2.set_xlabel("Time (s)")
         # ax2.set_ylabel("Residuals")
         # ax2.set_xlim(start/FPS, end/FPS)
@@ -183,11 +182,11 @@ class Kalman_filtering:
             if self.mode == "pitch" or self.mode == "none":
                 self.kf.z = np.array([[float(lk[i]), 0., gyro[i], 0.]]).T
                 x_ax, res_ax_pos, res_ax_vel = 2, 0, 2
-                ax1.set_ylim(-30, 30)
+                ax1.set_ylim(-33, 23)
             elif self.mode == "roll":
                 self.kf.z = np.array([[0., float(lk[i]), 0., gyro[i]]]).T
                 x_ax, res_ax_pos, res_ax_vel = 1, 1, 3
-                ax1.set_ylim(-10, 10)
+                ax1.set_ylim(-8, 1)
             else: 
                 raise ValueError(f"Invalid mode: {self.mode}. Expected 'pitch' or 'roll'.")
             gnd_truth = gnd_t[i] # ground truth
@@ -209,7 +208,7 @@ class Kalman_filtering:
             
             print("KF progress: {:.2f}%".format((i-start)/(end-start)*100), end='\r') # progress bar print
             
-        ax1.legend()
+        ax1.legend(loc='lower left')
         # ax2.legend()
         plt.ioff() # switch off before show
         plt.show(block=False) # continue running after plot is shown
@@ -276,12 +275,14 @@ class Kalman_filtering:
                 gnd_truth = data_frames_gnd[i].loc[:,'roll_x'] # roll_x for LK_*4, pitch_y for LK_*2
                 offset_gnd = 37.9
                 offset_gyro = 0.0
+                ylim = (-33,25)
             elif self.mode == "roll":
                 pitchroll_lk = data_frames_mcp[i].loc[:,'y_vals']
                 pitchroll_gyro = data_frames_imu[i].loc[:,'IMU Y'] * (-1) 
                 gnd_truth = data_frames_gnd[i].loc[:,'pitch_y'] * (-1) # pitch_y for LK_*4, roll_x for LK_*2
                 offset_gnd = 46.3
                 offset_gyro = 11.75
+                ylim = (-9,1)
             else:
                 raise ValueError("Invalid mode. Choose 'pitch' or 'roll'. Current mode: {}".format(self.mode))
             
@@ -299,12 +300,13 @@ class Kalman_filtering:
             print(f"min max of scaled_pitchroll_lk: {scaled_pitchroll_lk.min()}, {scaled_pitchroll_lk.max()}")
             print(f"sizes: scaled_pitchroll_lk: {scaled_pitchroll_lk.shape}, offset_pitchroll_gyro: {offset_pitchroll_gyro.shape}, offset_gnd_dat: {offset_gnd_dat.shape}")
             # test data, plot
-            plt.figure()
-            plt.plot(ts,scaled_pitchroll_lk, label='LK')
+            plt.figure(figsize=(6,5))
+            plt.plot(ts,scaled_pitchroll_lk, label='MCP')
             plt.plot(ts,offset_pitchroll_gyro, label='Gyro')
             plt.plot(ts,offset_gnd_dat, label='Ground Truth')
+            plt.ylim(ylim)
             plt.legend()
-            plt.title(f"TEST: scaled LK data for {self.mode} {i+1} mode")
+            # plt.title(f"TEST: scaled LK data for {self.mode} {i+1} mode")
             plt.xlabel("Time (s)")
             plt.ylabel("Degrees")
             plt.show(block=False)
@@ -321,7 +323,7 @@ class Kalman_filtering:
         mse, rmse, mse_mcp, rmse_mcp, mse_gyro, rmse_gyro = self.performance_metrics(kf_preds=kf_preds_store, lk=lk_store, gyro=gyro_store, gnd_t=gnd_store, tot=metrics_range)
         
         ones = np.ones_like(ts) # for plotting
-        plt.figure(figsize=(15, 4))
+        plt.figure(figsize=(8, 4))
         plt.plot(ts,rmse,'-b', label='RMSE Gnd')
         plt.plot(ts,ones*np.mean(rmse), '--b')
         # plt.plot(ts,mse, '-c', label='MSE Gnd')

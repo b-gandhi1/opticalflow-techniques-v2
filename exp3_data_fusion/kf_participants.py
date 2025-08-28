@@ -25,10 +25,7 @@ class Kalman_filtering:
                             [0.,0.,1.,0.],
                             [0.,0.,0.,1.]]) # state transition matrix, 4 x 4. constant velocity model. constant matrix. 
         self.kf.H = np.eye(dim_z,dim_x) # measurement function
-        self.kf.R = np.diag([1.0,0.3,0.2,1.0])# np.eye(dim_z) # measurement noise covariance matrix
-        # q_mcp = Q_discrete_white_noise(dim=2,dt=1/FPS,var=1)
-        # q_gyro = Q_discrete_white_noise(dim=2,dt=1/FPS,var=100) # process noise for gyro
-        # self.kf.Q = block_diag(q_mcp,q_gyro) #
+        self.kf.R = np.diag([1.0,0.3,0.2,1.0])# measurement noise covariance matrix
         self.kf.Q = np.eye(dim_x) # process noise
         print(f"Process noise covariance matrix Q: {self.kf.Q}")
         
@@ -47,33 +44,32 @@ class Kalman_filtering:
         
         return normalized_vector
     
-    def kf_setup(self, lk, gyro, gnd_t, window): # setup KF, get data    
+    def kf_setup(self, lk, gyro, gnd_t): # setup KF, get data    
         start = 0
         end = lk.shape[0] # use all data
 
         self.rmse_len = end - start # set rmse length
-        print(f"RMSE length: {self.rmse_len}")
-        # breakpoint()
+
         plt.ion()
-        fig = plt.figure(figsize=(6, 4))
-        ax1 = fig.add_subplot(211)
-        line1, = ax1.plot([], [], 'r.', label='KF')
+        fig = plt.figure(figsize=(6, 5))
+        ax1 = fig.add_subplot(111)
+        line1, = ax1.plot([], [], 'r.', label='KF pred')
         line2, = ax1.plot([], [], 'b.', label='Ground Truth')
         ax1.set_xlim(start/FPS, end/FPS)
-        ax2 = fig.add_subplot(212)
-        line3, = ax2.plot([], [], 'g.', label='Residual pos')
-        line4, = ax2.plot([], [], 'm.', label='Residual vel')
-        ax2.set_xlim(start/FPS, end/FPS)
-        ax1.set_title("Kalman Filter")
-        ax2.set_title("Residuals")
+        # ax2 = fig.add_subplot(212)
+        # line3, = ax2.plot([], [], 'g.', label='Residual pos')
+        # line4, = ax2.plot([], [], 'm.', label='Residual vel')
+        # ax2.set_xlim(start/FPS, end/FPS)
+        # ax1.set_title("Kalman Filter")
+        # ax2.set_title("Residuals")
         ax1.set_xlabel("Time (s)")
         ax1.set_ylabel("Rotation "+self.mode) # pitch or roll
         ax1.set_xlim(start/FPS, end/FPS)
         # ax1.set_ylim(-30, 30) # range for lk and gnd truth
-        ax2.set_xlabel("Time (s)")
-        ax2.set_ylabel("Residuals")
-        ax2.set_xlim(start/FPS, end/FPS)
-        ax2.set_ylim(-10, 10)
+        # ax2.set_xlabel("Time (s)")
+        # ax2.set_ylabel("Residuals")
+        # ax2.set_xlim(start/FPS, end/FPS)
+        # ax2.set_ylim(-10, 10)
         plt.tight_layout()
         
         x_store, gnd_store, residuals_store_pos, residuals_store_vel, ts = [], [], [], [], []
@@ -103,8 +99,8 @@ class Kalman_filtering:
             ts = np.append(ts, i/FPS)
             line1.set_data(ts,x_store)
             line2.set_data(ts,gnd_store)
-            line3.set_data(ts,residuals_store_pos)
-            line4.set_data(ts,residuals_store_vel)
+            # line3.set_data(ts,residuals_store_pos)
+            # line4.set_data(ts,residuals_store_vel)
 
             fig.canvas.draw()
             fig.canvas.flush_events()
@@ -112,7 +108,7 @@ class Kalman_filtering:
             print("KF progress: {:.2f}%".format((i-start)/(end-start)*100), end='\r') # progress print
             
         ax1.legend()
-        ax2.legend()
+        # ax2.legend()
         plt.ioff() # switch off before show
         plt.show(block=False) # continue running after plot is shown
         
@@ -139,20 +135,13 @@ class Kalman_filtering:
         print(f"Running datasets for {self.mode} mode.")
         
         # paths for participant data: 
-        polaris_csv_path = ...
-        imu_csv_path = ...
-        mcp_csv_path = ...
+        imu_polaris_csv_path = f"participant_data/part*/imu_pol_{self.mode}_*.csv"
+        mcp_csv_path = f"participant_data/part*/part-{self.mode}*.csv"
         
-        # sort glob in ascending order, then remove the first file from each list due to artefacts in roll1.
-        gnd_csv_files = sorted(glob.glob(polaris_csv_path))
-        # gnd_csv_files = sorted(glob.glob(polaris_csv_path))
-        # gnd_csv_files = gnd_csv_files[1:]
-        data_frames_gnd = [pd.read_csv(f, usecols=['roll_x','pitch_y','yaw_z']) for f in gnd_csv_files]
-        imu_csv_files = sorted(glob.glob(imu_csv_path))
-        # imu_csv_files = imu_csv_files[1:]
-        data_frames_imu = [pd.read_csv(f, usecols=['Pressure (kPa)','IMU X','IMU Y','IMU Z']) for f in imu_csv_files]
+        # sort glob in ascending order
+        imu_polaris_files = sorted(glob.glob(imu_polaris_csv_path))
         mcp_csv_files = sorted(glob.glob(mcp_csv_path))
-        # mcp_csv_files = mcp_csv_files[1:]
+        data_frames_gnd_imu = [pd.read_csv(f) for f in imu_polaris_files]
         data_frames_mcp = [pd.read_csv(f, usecols=['x_vals','y_vals','z_vals']) for f in mcp_csv_files]
         
         for f in data_frames_mcp:
@@ -160,68 +149,68 @@ class Kalman_filtering:
             f['y_vals'] = self.normalize_vector(f['y_vals'])
             f['z_vals'] = self.normalize_vector(f['z_vals'])
         # init stores for rmse calc after
-        lk_store = np.empty([len(data_frames_gnd[0]),len(data_frames_gnd)]) 
+        lk_store = np.empty([len(data_frames_gnd_imu[0]),len(data_frames_gnd_imu)]) 
         kf_preds_store = lk_store.copy()
         gyro_store = lk_store.copy()
         gnd_store = lk_store.copy() 
         
-        ts = np.linspace(0, len(data_frames_gnd[0])/FPS, num=len(data_frames_gnd[0])) # time series for x-axis
-
-        for i in range(len(data_frames_gnd)):
+        ts = np.linspace(0, len(data_frames_gnd_imu[0])/FPS, num=len(data_frames_gnd_imu[0])) # time series for x-axis
+        
+        metrics_range = range(len(data_frames_gnd_imu))
+        for i in metrics_range:
             
             if self.mode == "pitch":
                 pitchroll_lk = data_frames_mcp[i].loc[:,'x_vals'] 
-                pitchroll_gyro = data_frames_imu[i].loc[:,'IMU X'] 
-                gnd_truth = data_frames_gnd[i].loc[:,'roll_x'] # roll_x for LK_*4, pitch_y for LK_*2
-                offset_gnd = 37.9
-                offset_gyro = 0.0
+                pitchroll_gyro = data_frames_gnd_imu[i].loc[:,'IMU X'] 
+                gnd_truth = data_frames_gnd_imu[i].loc[:,'Polaris Rz'] # roll_x for LK_*4, pitch_y for LK_*2
+                ylim = (-33,25)
             elif self.mode == "roll":
                 pitchroll_lk = data_frames_mcp[i].loc[:,'y_vals']
-                pitchroll_gyro = data_frames_imu[i].loc[:,'IMU Y'] * (-1) 
-                gnd_truth = data_frames_gnd[i].loc[:,'pitch_y'] * (-1) # pitch_y for LK_*4, roll_x for LK_*2
-                offset_gnd = 46.3
-                offset_gyro = 11.75
+                pitchroll_gyro = data_frames_gnd_imu[i].loc[:,'IMU Y'] #* (-1) 
+                gnd_truth = data_frames_gnd_imu[i].loc[:,'Polaris Ry'] #* (-1) # pitch_y for LK_*4, roll_x for LK_*2
+                ylim = (-12,10)
             else:
                 raise ValueError("Invalid mode. Choose 'pitch' or 'roll'. Current mode: {}".format(self.mode))
             
-            offset_gnd_dat = gnd_truth.values + offset_gnd
-            offset_pitchroll_gyro = pitchroll_gyro.values + offset_gyro
+            # offset_gnd_dat = gnd_truth.values + offset_gnd
+            # offset_pitchroll_gyro = pitchroll_gyro.values + offset_gyro
             # minmax scaling MCP data
-            min_val = offset_gnd_dat.min() 
+            min_val = gnd_truth.min() 
             print(f"offset_gnd_dat min val: {min_val}")
-            max_val = offset_gnd_dat.max() 
+            max_val = gnd_truth.max() 
             print(f"offset_gnd_dat max val: {max_val}")
             scaler = MinMaxScaler(feature_range=(min_val,max_val))
             # normalise
             scaled_pitchroll_lk = scaler.fit_transform(pitchroll_lk.values.reshape(-1,1)) # reshape for single feature
             # norm_pitchroll_lk = (pitchroll_lk.values - pitchroll_lk.min())/(pitchroll_lk.max() - pitchroll_lk.min()) * (offset_gnd_dat.max() - offset_gnd_dat.min()) + offset_gnd_dat.min()
             print(f"min max of scaled_pitchroll_lk: {scaled_pitchroll_lk.min()}, {scaled_pitchroll_lk.max()}")
-            print(f"sizes: scaled_pitchroll_lk: {scaled_pitchroll_lk.shape}, offset_pitchroll_gyro: {offset_pitchroll_gyro.shape}, offset_gnd_dat: {offset_gnd_dat.shape}")
+            print(f"sizes: scaled_pitchroll_lk: {scaled_pitchroll_lk.shape}, offset_pitchroll_gyro: {pitchroll_gyro.shape}, offset_gnd_dat: {gnd_truth.shape}")
             # test data, plot
-            plt.figure()
-            plt.plot(ts,scaled_pitchroll_lk, label='LK')
-            plt.plot(ts,offset_pitchroll_gyro, label='Gyro')
-            plt.plot(ts,offset_gnd_dat, label='Ground Truth')
+            plt.figure(f"for {self.mode} mode num {i+1}/{len(data_frames_gnd_imu)}")
+            plt.plot(ts,scaled_pitchroll_lk, label='MCP')
+            plt.plot(ts,pitchroll_gyro, label='Gyro')
+            plt.plot(ts,gnd_truth, label='Ground Truth')
+            plt.ylim(ylim)
             plt.legend()
-            plt.title(f"TEST: scaled LK data for {self.mode} {i+1} mode")
+            # plt.title(f"TEST: scaled LK data {self.mode} {i+1} mode")
             plt.xlabel("Time (s)")
             plt.ylabel("Degrees")
             plt.show(block=False)
             
-            print(f"Running for dataset {i+1}/{len(data_frames_gnd)} for {self.mode} mode.")
+            print(f"Running for dataset {i+1}/{len(data_frames_gnd_imu)} for {self.mode} mode.")
             # run KF
-            x_pred = self.kf_setup(lk=scaled_pitchroll_lk, gyro=offset_pitchroll_gyro, gnd_t=offset_gnd_dat, window="None") # run KF
+            x_pred = self.kf_setup(lk=scaled_pitchroll_lk, gyro=pitchroll_gyro, gnd_t=gnd_truth) # run KF
 
             # store vars
             lk_store[:,i] = scaled_pitchroll_lk.flatten() # store lk data
-            gyro_store[:,i] = offset_pitchroll_gyro.flatten() # store gyro data
-            gnd_store[:,i] = offset_gnd_dat.flatten() # store ground truth data
+            gyro_store[:,i] = pitchroll_gyro # store gyro data
+            gnd_store[:,i] = gnd_truth # store ground truth data
             kf_preds_store[:,i] = x_pred.flatten() # store KF predictions
 
         # calculate mean rmse across all datasets
         mse, rmse, mse_mcp, rmse_mcp, mse_gyro, rmse_gyro = self.performance_metrics(kf_preds=kf_preds_store, lk=lk_store, gyro=gyro_store, gnd_t=gnd_store, tot=metrics_range)
         ones = np.ones_like(ts) # for plotting
-        plt.figure(figsize=(15, 4))
+        plt.figure(figsize=(8, 4))
         plt.plot(ts,rmse,'-b', label='RMSE Gnd')
         plt.plot(ts,ones*np.mean(rmse), '--b')
         # plt.plot(ts,mse, '-c', label='MSE Gnd')
@@ -237,13 +226,27 @@ class Kalman_filtering:
         
         plt.xlabel("Time (s)")
         plt.ylabel("RMSE (deg)")
+        plt.ylim(-0.5,4.5)
         plt.legend()
         plt.tight_layout()
         plt.show(block=False)
         print(f"Maximum RMSE: {np.max(rmse)}, Minimum RMSE: {np.min(rmse)}")
         print(f"Maximum MSE: {np.max(mse)}, Minimum MSE: {np.min(mse)}")
 
+        
 if __name__ == "__main__":
     kf = Kalman_filtering()
     kf.mode = sys.argv[1] # input mode: "pitch" | "roll"
-    ...
+    try:
+        kf.data_indv_mc_sims()
+        print('All plots displayed, press any key to close all windows and exit on a figure window.')
+        while True: 
+            if plt.waitforbuttonpress():
+                plt.close('all')
+                break
+        raise SystemExit('Button pressed to exit fig windows: Closing all windows and terminating the program.')
+    except KeyboardInterrupt:
+        plt.close('all')
+        raise SystemExit("Program interrupted by user. Exiting...")
+
+
