@@ -25,7 +25,7 @@ class Kalman_filtering:
                             [0.,0.,1.,0.],
                             [0.,0.,0.,1.]]) # state transition matrix, 4 x 4. constant velocity model. constant matrix. 
         self.kf.H = np.eye(dim_z,dim_x) # measurement function
-        self.kf.R = np.diag([1.0,0.3,0.2,1.0])# np.eye(dim_z) # measurement noise covariance matrix
+        self.kf.R = np.diag([1.0,1.0,0.2,0.2])# np.eye(dim_z) # measurement noise covariance matrix
         # q_mcp = Q_discrete_white_noise(dim=2,dt=1/FPS,var=1)
         # q_gyro = Q_discrete_white_noise(dim=2,dt=1/FPS,var=100) # process noise for gyro
         # self.kf.Q = block_diag(q_mcp,q_gyro) #

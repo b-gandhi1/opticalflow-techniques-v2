@@ -25,7 +25,7 @@ class Kalman_filtering:
                             [0.,0.,1.,0.],
                             [0.,0.,0.,1.]]) # state transition matrix, 4 x 4. constant velocity model. constant matrix. 
         self.kf.H = np.eye(dim_z,dim_x) # measurement function
-        self.kf.R = np.diag([1.0,0.3,0.2,1.0])# measurement noise covariance matrix
+        self.kf.R = np.diag([1.0,0.3,0.2,1.0]) # measurement noise covariance matrix
         self.kf.Q = np.eye(dim_x) # process noise
         print(f"Process noise covariance matrix Q: {self.kf.Q}")
         
@@ -248,5 +248,3 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         plt.close('all')
         raise SystemExit("Program interrupted by user. Exiting...")
-
-

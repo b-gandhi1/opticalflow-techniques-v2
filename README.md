@@ -37,9 +37,7 @@ Numpy also needs to be installed.
 
 
 ## Folder structure
-* Debugging with vscode file: `launch.json `
 * Get data from: `opticalflow.py`
-* Machine Learning implement and results: `ml_pickle_results.py` 
 * Calibrating paramters tuning: `trial_img_process_calib.py`
 
 ## Current issues (self-notes): 
