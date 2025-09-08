@@ -35,12 +35,12 @@ class ParticipantDataSort:
             file_path = file_paths[0]
         else:
             print(f"No CSV file found for participant {i} with {self.pitchroll} {j}, skipping plotting.")
-            return None, None
+            return None, None, None
         if not file_path:
             raise FileNotFoundError(f"No CSV file found for participant {i} with {self.pitchroll} {j}.")
         imu_df = pd.read_csv(file_path,usecols=['IMU X', 'IMU Y', 'IMU Z'])
         polaris_df = pd.read_csv(file_path,usecols=['Polaris Rx', 'Polaris Ry', 'Polaris Rz'])
-        
+        pressures_df = pd.read_csv(file_path,usecols=['Pressure (kPa)'])
         # plot figures to check data
         # plt.figure(figsize=(10, 5))
         # plt.subplot(1, 2, 1)
@@ -63,11 +63,10 @@ class ParticipantDataSort:
 
         # plt.tight_layout()
         
-        return imu_df, polaris_df
+        return imu_df, polaris_df, pressures_df
     
-    def transform_polaris_imu(self, imu_df, polaris_df,i,j):
+    def transform_polaris_imu(self, imu_df, polaris_df, pressures_df, i, j):
         # Transform polaris and imu data using offset and any necessary rotations, and select apt axes
-
         if imu_df is None or polaris_df is None:
             print(f"Skipping transformation for participant {i} {self.pitchroll} {j} due to missing data.")
             return
@@ -75,9 +74,11 @@ class ParticipantDataSort:
         if self.pitchroll == "pitch":
             imu_df_fin = imu_df['IMU X'] - imu_df['IMU X'].iloc[:5].mean()
             polaris_df_fin = polaris_df['Polaris Rz'] * (-1) - (polaris_df['Polaris Rz'].iloc[:5] * (-1)).mean()
+            pressures_motion = pressures_df['Pressure (kPa)']
         elif self.pitchroll == "roll":
             imu_df_fin = imu_df['IMU Y'] - imu_df['IMU Y'].iloc[:5].mean()
             polaris_df_fin = polaris_df['Polaris Ry'] - polaris_df['Polaris Ry'].iloc[:5].mean()
+            pressures_motion = pressures_df['Pressure (kPa)']
         else:
             raise ValueError("Invalid pitchroll value. Use 'pitch' or 'roll'.")
         
@@ -91,11 +92,13 @@ class ParticipantDataSort:
         plt.legend()
         
         # save the dataframes
-        imu_pol_df = pd.concat([imu_df_fin, polaris_df_fin], axis=1)
-        imu_pol_df.to_csv(f"participant_data/part{str(i)}/imu_pol_{self.pitchroll}_{j}.csv", index=False)
+        # imu_pol_df = pd.concat([imu_df_fin, polaris_df_fin], axis=1)
+        # imu_pol_df.to_csv(f"participant_data/part{str(i)}/imu_pol_{self.pitchroll}_{j}.csv", index=False)
 
-    def main(self):
+        return pressures_motion
         
+    def main(self):
+        pressures_pitch, pressures_roll = [], []
         # self.pitchroll = "pitch"
         # self.transform_polaris_imu(*self.plot_polaris_imu(1,2),1,2)
         # self.pitchroll = "roll"
@@ -105,13 +108,42 @@ class ParticipantDataSort:
             for j in range(1,3+1):
                 # obtain KLT files and save them: 
                 self.pitchroll = "pitch"
-                self.extract_klt(i,j)
-                self.transform_polaris_imu(*self.plot_polaris_imu(i,j),i,j)
-        
+                # self.extract_klt(i,j)
+                imu_df_pitch, polaris_df_pitch, pressures_df_pitch = self.plot_polaris_imu(i,j)
+                if pressures_df_pitch is not None:
+                    pressure_dat_pit = self.transform_polaris_imu(imu_df_pitch, polaris_df_pitch, pressures_df_pitch, i, j)
+                    pressures_pitch.append(pressure_dat_pit)
+
                 self.pitchroll = "roll"
-                self.extract_klt(i,j)
-                self.transform_polaris_imu(*self.plot_polaris_imu(i,j),i,j)
-        plt.show()
+                # self.extract_klt(i,j)
+                imu_df_roll, polaris_df_roll, pressures_df_roll = self.plot_polaris_imu(i,j)
+                if pressures_df_roll is not None:
+                    pressure_dat_rol = self.transform_polaris_imu(imu_df_roll, polaris_df_roll, pressures_df_roll, i, j)
+                    pressures_roll.append(pressure_dat_rol)
+
+        # plot all pressure data for pitch and roll
+        plt.figure(figsize=(10, 4))
+        trim = 2
+        ts = np.linspace(0,60,len(pressures_pitch[0])-trim)
+        plt.subplot(2, 1, 1)
+        plt.plot(ts, pressures_pitch[0][trim:], ts, pressures_pitch[1][trim:], ts, pressures_pitch[2][trim:])
+        plt.xlabel('Time (s)')
+        plt.ylabel('Pressure (kPa), pitch')
+        
+        plt.subplot(2, 1, 2)
+        plt.plot(ts, pressures_roll[0][trim:], ts, pressures_roll[1][trim:], ts, pressures_roll[2][trim:])
+        plt.xlabel('Time (s)')
+        plt.ylabel('Pressure (kPa), roll')
+        
+        plt.tight_layout()
+        
+        setpoint = 1.7
+        print(f"control: overall mean pressure: pitch - {np.mean(np.mean(pressures_pitch, axis=0))}, roll - {np.mean(np.mean(pressures_roll, axis=0))}")
+        print(f"Max deviation pitch: {np.abs(np.max(np.mean(pressures_pitch, axis=0)[trim:]) - setpoint)}")
+        print(f"Min deviation pitch: {np.abs(np.min(np.mean(pressures_pitch, axis=0)[trim:]) - setpoint)}")
+        print(f"Max deviation roll: {np.abs(np.max(np.mean(pressures_roll, axis=0)[trim:]) - setpoint)}")
+        print(f"Min deviation roll: {np.abs(np.min(np.mean(pressures_roll, axis=0)[trim:]) - setpoint)}")
+        # plt.show() # show all figs
 
 
 if __name__ == "__main__":
@@ -122,7 +154,7 @@ if __name__ == "__main__":
             if plt.waitforbuttonpress():
                 plt.close('all')
                 break
-        raise SystemExit('Button pressed: Closing all windows and terminating the program.')
+        raise SystemExit('Exit Button Pressed: Closing all windows and terminating the program.')
     except KeyboardInterrupt:
         SystemExit("Exiting participant data sort script due to keyboard interrupt.")
 
