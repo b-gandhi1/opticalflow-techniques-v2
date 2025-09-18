@@ -24,13 +24,17 @@ class Kalman_filtering:
                             [0.,1.,0.,self.dt],
                             [0.,0.,1.,0.],
                             [0.,0.,0.,1.]]) # state transition matrix, 4 x 4. constant velocity model. constant matrix. 
-        self.kf.H = np.eye(dim_z,dim_x) # measurement function
-        self.kf.R = np.diag([1.0,1.0,0.2,0.2])# np.eye(dim_z) # measurement noise covariance matrix
-        # q_mcp = Q_discrete_white_noise(dim=2,dt=1/FPS,var=1)
-        # q_gyro = Q_discrete_white_noise(dim=2,dt=1/FPS,var=100) # process noise for gyro
-        # self.kf.Q = block_diag(q_mcp,q_gyro) #
-        self.kf.Q = np.eye(dim_x) # process noise
-        print(f"Process noise covariance matrix Q: {self.kf.Q}")
+        # self.kf.H = np.eye(dim_z,dim_x) # measurement function
+        self.kf.H = np.array([[1.,0.,0.,0.],
+                            [0.,1.,0.,0.],
+                            [1.,0.,1.,0.],
+                            [0.,1.,0.,1.]])
+        r1, r2, r3, r4 = np.eye(4), np.zeros((4,4)), np.diag([0.2,0.2,0.6,0.6]), np.diag([0.6,0.6,0.2,0.2]) # final=r4
+        self.kf.R = r1 # measurement noise covariance matrix
+        q1, q2, q3, q4 = np.eye(4), np.zeros((4,4)), np.eye(4)*0.1, np.diag([0.1, 0.1, 0., 0.]) # final=q4
+        self.kf.Q = q1 # process noise covariance matrix
+        # self.kf.Q = np.eye(dim_x) # process noise
+        print(f"Process noise covariance matrix Q: {self.kf.Q} and observation noise covariance matrix R: {self.kf.R}")
         
         self.kf.x = np.zeros((dim_x,1)) # initial state estimate
         self.kf.P = np.eye(dim_x) # initial state covariance matrix
@@ -126,15 +130,16 @@ class Kalman_filtering:
         print("Generating synthetic data for testing.")
         num_samples = 300
         time = np.linspace(0, num_samples/FPS, num_samples)
-        lk = np.sin(2 * np.pi * 0.1 * time) * 20 + np.random.normal(0, 1, num_samples)
-        gyro = np.sin(2 * np.pi * 0.1 * time) * 20 + np.random.normal(0, 0.5, num_samples)
+        lk = np.sin(2 * np.pi * 0.1 * time) * 20 + np.random.normal(0, 7, num_samples)
+        gyro = np.sin(2 * np.pi * 0.1 * time) * 19 + np.random.normal(0, 0.5, num_samples) + 3.0 # 3.0 = drift
         gnd = np.sin(2 * np.pi * 0.1 * time) * 20
-        plt.figure(figsize=(10, 5))
-        plt.plot(time, lk, label='LK_syn')
+        plt.figure(figsize=(6, 5))
+        plt.plot(time, lk, label='MCP_syn')
         plt.plot(time, gyro, label='Gyro_syn')
         plt.plot(time, gnd, label='Gnd_syn')
         plt.legend()    
         plt.show(block=False)
+        
         return lk, gyro, gnd
     
     def kf_setup(self, lk, gyro, gnd_t, window): # setup KF, get data    
@@ -152,40 +157,44 @@ class Kalman_filtering:
         # breakpoint()
         plt.ion()
         fig = plt.figure(figsize=(6, 5))
-        ax1 = fig.add_subplot(111)
+        ax1 = fig.add_subplot(211) # 111 for single plot, 211 for two plots
         line1, = ax1.plot([], [], 'r.', label='KF pred')
         line2, = ax1.plot([], [], 'b.', label='Ground Truth')
         ax1.set_xlim(start/FPS, end/FPS)
-        # ax2 = fig.add_subplot(212)
-        # line3, = ax2.plot([], [], 'g.', label='Residual pos')
-        # line4, = ax2.plot([], [], 'm.', label='Residual vel')
-        # ax2.set_xlim(start/FPS, end/FPS)
+        #----
+        ax2 = fig.add_subplot(212)
+        line3, = ax2.plot([], [], 'g.', label='Residual pos')
+        line4, = ax2.plot([], [], 'm.', label='Residual vel')
+        ax2.set_xlim(start/FPS, end/FPS)
         # ax1.set_title("Kalman Filter")
         # ax2.set_title("Residuals")
+        #----
         ax1.set_xlabel("Time (s)")
         ax1.set_ylabel(f"Degrees ({self.mode} motion)") # pitch or roll
         ax1.set_xlim(start/FPS, end/FPS)
-        # ax2.set_xlabel("Time (s)")
-        # ax2.set_ylabel("Residuals")
-        # ax2.set_xlim(start/FPS, end/FPS)
-        # ax2.set_ylim(-10, 10)
+        #----
+        ax2.set_xlabel("Time (s)")
+        ax2.set_ylabel("Residuals")
+        ax2.set_xlim(start/FPS, end/FPS)
+        ax2.set_ylim(-10, 10)
+        #----
         plt.tight_layout()
         
         x_store, gnd_store, residuals_store_pos, residuals_store_vel, ts = [], [], [], [], []
         # index = np.linspace(start, window, num=window-start)
         
         for i in range(start, end):
-            # u = kalman_filtering.get_mcp_data(i)
-            # self.kf.x, self.kf.P = 
             self.kf.predict(F=self.kf.F,Q=self.kf.Q) # update x
+            
             # update measurement, z, based on motion type
-            if self.mode == "pitch" or self.mode == "none":
-                self.kf.z = np.array([[float(lk[i]), 0., gyro[i], 0.]]).T
-                x_ax, res_ax_pos, res_ax_vel = 2, 0, 2
-                ax1.set_ylim(-33, 23)
-            elif self.mode == "roll":
+            # z = [x_mcp, y_mcp x_gyro, y_gyro].T --- format
+            if self.mode == "pitch" or self.mode == "none": # y_mcp, y_gyro
                 self.kf.z = np.array([[0., float(lk[i]), 0., gyro[i]]]).T
                 x_ax, res_ax_pos, res_ax_vel = 1, 1, 3
+                ax1.set_ylim(-33, 23)
+            elif self.mode == "roll": # x_mcp, x_gyro
+                self.kf.z = np.array([[float(lk[i]), 0., gyro[i], 0.]]).T
+                x_ax, res_ax_pos, res_ax_vel = 0, 0, 2
                 ax1.set_ylim(-8, 1)
             else: 
                 raise ValueError(f"Invalid mode: {self.mode}. Expected 'pitch' or 'roll'.")
@@ -200,8 +209,8 @@ class Kalman_filtering:
             ts = np.append(ts, i/FPS)
             line1.set_data(ts,x_store)
             line2.set_data(ts,gnd_store)
-            # line3.set_data(ts,residuals_store_pos)
-            # line4.set_data(ts,residuals_store_vel)
+            line3.set_data(ts,residuals_store_pos)
+            line4.set_data(ts,residuals_store_vel)
 
             fig.canvas.draw()
             fig.canvas.flush_events()
@@ -209,7 +218,7 @@ class Kalman_filtering:
             print("KF progress: {:.2f}%".format((i-start)/(end-start)*100), end='\r') # progress bar print
             
         ax1.legend(loc='lower left')
-        # ax2.legend()
+        ax2.legend()
         plt.ioff() # switch off before show
         plt.show(block=False) # continue running after plot is shown
         
@@ -222,11 +231,20 @@ class Kalman_filtering:
         diff_sq_mcp = np.abs(kf_preds - lk)**2
         diff_sq_gyro = np.abs(kf_preds - gyro)**2
         
-        mse = 1/tot * np.sum(diff_sq, axis=1) # mean across all trials
+        # Handle both 1D and 2D arrays
+        if len(diff_sq.shape) == 1:
+            # For 1D arrays (single trial), compute element-wise MSE
+            mse = diff_sq  # element-wise squared differences
+            mse_mcp = diff_sq_mcp
+            mse_gyro = diff_sq_gyro
+        else:
+            # For 2D arrays (multiple trials)
+            mse = 1/tot * np.sum(diff_sq, axis=1) # mean across all trials
+            mse_mcp = 1/tot * np.sum(diff_sq_mcp, axis=1) # mean square error for mcp data
+            mse_gyro = 1/tot * np.sum(diff_sq_gyro, axis=1) # mean square error for gyro data
+            
         rmse = np.sqrt(mse) # root mean square error
-        mse_mcp = 1/tot * np.sum(diff_sq_mcp, axis=1) # mean square error for mcp data
         rmse_mcp = np.sqrt(mse_mcp) # rmse for mcp data
-        mse_gyro = 1/tot * np.sum(diff_sq_gyro, axis=1) # mean square error for gyro data
         rmse_gyro = np.sqrt(mse_gyro) # rmse for gyro data
         
         return mse, rmse, mse_mcp, rmse_mcp, mse_gyro, rmse_gyro
@@ -344,6 +362,35 @@ class Kalman_filtering:
         plt.show(block=False)
         print(f"Maximum RMSE: {np.max(rmse)}, Minimum RMSE: {np.min(rmse)}")
         print(f"Maximum MSE: {np.max(mse)}, Minimum MSE: {np.min(mse)}")
+    
+    def plot_metrics_test(self, kf_preds_store, lk_store, gyro_store, gnd_store):
+        metrics_range = range(len(kf_preds_store))
+        mse, rmse, mse_mcp, rmse_mcp, mse_gyro, rmse_gyro = self.performance_metrics(kf_preds=kf_preds_store, lk=lk_store, gyro=gyro_store, gnd_t=gnd_store, tot=metrics_range)
+        ts = np.linspace(0, kf_preds_store.shape[0]/FPS, num=kf_preds_store.shape[0]) # time series for x-axis
+        ones = np.ones_like(ts) # for plotting
+        
+        plt.figure(figsize=(8, 4))
+        plt.plot(ts,rmse,'-b', label='RMSE Gnd')
+        plt.plot(ts,ones*np.mean(rmse), '--b')
+        # plt.plot(ts,mse, '-c', label='MSE Gnd')
+        # plt.plot(ts,ones*np.mean(mse), '--c')
+        plt.plot(ts, rmse_mcp, '-g', label='RMSE MCP')
+        plt.plot(ts, ones*np.mean(rmse_mcp), '--g')
+        # plt.plot(ts, mse_mcp, '-m', label='MSE MCP')
+        # plt.plot(ts, ones*np.mean(mse_mcp), '--m')
+        plt.plot(ts, rmse_gyro, '-r', label='RMSE Gyro')
+        plt.plot(ts, ones*np.mean(rmse_gyro), '--r')
+        # plt.plot(ts, mse_gyro, '-y', label='MSE Gyro')
+        # plt.plot(ts, ones*np.mean(mse_gyro), '--y')
+        
+        plt.xlabel("Time (s)")
+        plt.ylabel("RMSE (deg)")
+        plt.legend()
+        plt.tight_layout()
+        plt.show(block=False)
+        print(f"Maximum RMSE: {np.max(rmse)}, Minimum RMSE: {np.min(rmse)}")
+        print(f"Maximum MSE: {np.max(mse)}, Minimum MSE: {np.min(mse)}")
+
 
 if __name__ == "__main__":
     kf = Kalman_filtering()
@@ -356,7 +403,8 @@ if __name__ == "__main__":
             kf.data_indv_mc_sims()
         elif kf.mode == 'none' and mc == "test": # test with synthetic data
             lk_syn, gyro_syn, gnd_t_syn = kf.synthetic_data()
-            kf.kf_setup(lk=lk_syn, gyro=gyro_syn, gnd_t=gnd_t_syn, window="None")
+            kf_pred = kf.kf_setup(lk=lk_syn, gyro=gyro_syn, gnd_t=gnd_t_syn, window="None")
+            kf.plot_metrics_test(kf_preds_store=kf_pred, lk_store=lk_syn, gyro_store=gyro_syn, gnd_store=gnd_t_syn)
         else: 
             lk, gyro, gnd_t = kf.get_data()
             kf.kf_setup(lk=lk, gyro=gyro, gnd_t=gnd_t, window=100)
@@ -373,3 +421,5 @@ if __name__ == "__main__":
 # To run: 
 # python kalman_filter_fusion.py pitch|roll mc
 # mc - optional for monte carlo simulation. if not provided, single KF model is executed. 
+# to run test: 
+# python kalman_filter_fusion.py none test
