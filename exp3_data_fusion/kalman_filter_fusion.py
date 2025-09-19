@@ -29,10 +29,10 @@ class Kalman_filtering:
                             [0.,1.,0.,0.],
                             [1.,0.,1.,0.],
                             [0.,1.,0.,1.]])
-        r1, r2, r3, r4 = np.eye(4), np.zeros((4,4)), np.diag([0.2,0.2,0.6,0.6]), np.diag([0.6,0.6,0.2,0.2]) # final=r4
-        self.kf.R = r1 # measurement noise covariance matrix
-        q1, q2, q3, q4 = np.eye(4), np.zeros((4,4)), np.eye(4)*0.1, np.diag([0.1, 0.1, 0., 0.]) # final=q4
-        self.kf.Q = q1 # process noise covariance matrix
+        r1, r2, r3, r4, r5 = np.eye(4), np.zeros((4,4)), np.diag([0.2,0.2,0.6,0.6]), np.diag([0.6,0.6,0.2,0.2]), np.diag([0.2,0.6,0.05,0.2]) # final=r5
+        self.kf.R = r5 # measurement noise covariance matrix
+        q1, q2, q3, q4, q5 = np.eye(4), np.zeros((4,4)), np.eye(4)*0.1, np.diag([0.1,0.1,0.,0.]), np.diag([0.6, 0.1, 0., 0.]) # final=q5
+        self.kf.Q = q5 # process noise covariance matrix
         # self.kf.Q = np.eye(dim_x) # process noise
         print(f"Process noise covariance matrix Q: {self.kf.Q} and observation noise covariance matrix R: {self.kf.R}")
         
@@ -137,7 +137,8 @@ class Kalman_filtering:
         plt.plot(time, lk, label='MCP_syn')
         plt.plot(time, gyro, label='Gyro_syn')
         plt.plot(time, gnd, label='Gnd_syn')
-        plt.legend()    
+        plt.ylim(-40,48)
+        plt.legend(loc='upper right')    
         plt.show(block=False)
         
         return lk, gyro, gnd
@@ -157,15 +158,15 @@ class Kalman_filtering:
         # breakpoint()
         plt.ion()
         fig = plt.figure(figsize=(6, 5))
-        ax1 = fig.add_subplot(211) # 111 for single plot, 211 for two plots
+        ax1 = fig.add_subplot(111) # 111 for single plot, 211 for two plots
         line1, = ax1.plot([], [], 'r.', label='KF pred')
         line2, = ax1.plot([], [], 'b.', label='Ground Truth')
         ax1.set_xlim(start/FPS, end/FPS)
         #----
-        ax2 = fig.add_subplot(212)
-        line3, = ax2.plot([], [], 'g.', label='Residual pos')
-        line4, = ax2.plot([], [], 'm.', label='Residual vel')
-        ax2.set_xlim(start/FPS, end/FPS)
+        # ax2 = fig.add_subplot(212)
+        # line3, = ax2.plot([], [], 'g.', label='Residual pos')
+        # line4, = ax2.plot([], [], 'm.', label='Residual vel')
+        # ax2.set_xlim(start/FPS, end/FPS)
         # ax1.set_title("Kalman Filter")
         # ax2.set_title("Residuals")
         #----
@@ -173,10 +174,10 @@ class Kalman_filtering:
         ax1.set_ylabel(f"Degrees ({self.mode} motion)") # pitch or roll
         ax1.set_xlim(start/FPS, end/FPS)
         #----
-        ax2.set_xlabel("Time (s)")
-        ax2.set_ylabel("Residuals")
-        ax2.set_xlim(start/FPS, end/FPS)
-        ax2.set_ylim(-10, 10)
+        # ax2.set_xlabel("Time (s)")
+        # ax2.set_ylabel("Residuals")
+        # ax2.set_xlim(start/FPS, end/FPS)
+        # ax2.set_ylim(-10, 10)
         #----
         plt.tight_layout()
         
@@ -191,7 +192,7 @@ class Kalman_filtering:
             if self.mode == "pitch" or self.mode == "none": # y_mcp, y_gyro
                 self.kf.z = np.array([[0., float(lk[i]), 0., gyro[i]]]).T
                 x_ax, res_ax_pos, res_ax_vel = 1, 1, 3
-                ax1.set_ylim(-33, 23)
+                ax1.set_ylim(-33, 30)
             elif self.mode == "roll": # x_mcp, x_gyro
                 self.kf.z = np.array([[float(lk[i]), 0., gyro[i], 0.]]).T
                 x_ax, res_ax_pos, res_ax_vel = 0, 0, 2
@@ -209,8 +210,8 @@ class Kalman_filtering:
             ts = np.append(ts, i/FPS)
             line1.set_data(ts,x_store)
             line2.set_data(ts,gnd_store)
-            line3.set_data(ts,residuals_store_pos)
-            line4.set_data(ts,residuals_store_vel)
+            # line3.set_data(ts,residuals_store_pos)
+            # line4.set_data(ts,residuals_store_vel)
 
             fig.canvas.draw()
             fig.canvas.flush_events()
@@ -218,7 +219,7 @@ class Kalman_filtering:
             print("KF progress: {:.2f}%".format((i-start)/(end-start)*100), end='\r') # progress bar print
             
         ax1.legend(loc='lower left')
-        ax2.legend()
+        # ax2.legend()
         plt.ioff() # switch off before show
         plt.show(block=False) # continue running after plot is shown
         
@@ -357,6 +358,7 @@ class Kalman_filtering:
         
         plt.xlabel("Time (s)")
         plt.ylabel("RMSE (deg)")
+        plt.ylim(-3,15)
         plt.legend()
         plt.tight_layout()
         plt.show(block=False)
