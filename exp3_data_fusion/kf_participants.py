@@ -24,9 +24,13 @@ class Kalman_filtering:
                             [0.,1.,0.,self.dt],
                             [0.,0.,1.,0.],
                             [0.,0.,0.,1.]]) # state transition matrix, 4 x 4. constant velocity model. constant matrix. 
-        self.kf.H = np.eye(dim_z,dim_x) # measurement function
-        self.kf.R = np.diag([1.0,0.3,0.2,1.0]) # measurement noise covariance matrix
-        self.kf.Q = np.eye(dim_x) # process noise
+        # self.kf.H = np.eye(dim_z,dim_x) # measurement function
+        self.kf.H = np.array([[1.,0.,0.,0.],
+                            [0.,1.,0.,0.],
+                            [1.,0.,1.,0.],
+                            [0.,1.,0.,1.]])
+        self.kf.R = np.diag([0.2,0.6,0.05,0.2]) # measurement noise covariance matrix
+        self.kf.Q = np.diag([0.6, 0.1, 0., 0.]) # process noise
         print(f"Process noise covariance matrix Q: {self.kf.Q}")
         
         self.kf.x = np.zeros((dim_x,1)) # initial state estimate
@@ -79,12 +83,12 @@ class Kalman_filtering:
             self.kf.predict(F=self.kf.F,Q=self.kf.Q) # update x
             # update measurement, z, based on motion type
             if self.mode == "pitch" or self.mode == "none":
-                self.kf.z = np.array([[float(lk[i]), 0., gyro[i], 0.]]).T
-                x_ax, res_ax_pos, res_ax_vel = 2, 0, 2
+                self.kf.z = np.array([[0., float(lk[i]), 0., gyro[i]]]).T
+                x_ax, res_ax_pos, res_ax_vel = 1,1,3
                 ax1.set_ylim(-30, 30)
             elif self.mode == "roll":
-                self.kf.z = np.array([[0., float(lk[i]), 0., gyro[i]]]).T
-                x_ax, res_ax_pos, res_ax_vel = 1, 1, 3
+                self.kf.z = np.array([[float(lk[i]), 0., gyro[i], 0.]]).T
+                x_ax, res_ax_pos, res_ax_vel = 0,0,2
                 ax1.set_ylim(-10, 10)
             else: 
                 raise ValueError(f"Invalid mode: {self.mode}. Expected 'pitch' or 'roll'.")
@@ -114,7 +118,18 @@ class Kalman_filtering:
         
         return x_store
     
-    def performance_metrics(self, kf_preds, lk, gyro, gnd_t, tot): # Monte Carlo sim setup: 
+    def performance_metrics_lk(self, lk, gyro, gnd_t, tot): # calculates rmse relative to mcp values
+        tot = float(tot[-1]) # num of samples being used, 3 | 4 | 5, depending on which dataset. 
+        
+        diff_sq_gyro = np.abs(lk - gnd_t)**2
+        diff_sq_gnd = np.abs(lk - gyro)**2
+        
+        rmse_gyro = np.sqrt(1/tot * np.sum(diff_sq_gyro, axis = 1))
+        rmse_gnd = np.sqrt(1/tot * np.sum(diff_sq_gnd, axis = 1))
+        
+        return rmse_gyro, rmse_gnd
+    
+    def performance_metrics(self, kf_preds, lk, gyro, gnd_t, tot): # calculates rmse relative to kf estimates
         tot = float(tot[-1])
         
         diff_sq = np.abs(kf_preds - gnd_t)**2
@@ -207,10 +222,11 @@ class Kalman_filtering:
             gnd_store[:,i] = gnd_truth # store ground truth data
             kf_preds_store[:,i] = x_pred.flatten() # store KF predictions
 
-        # calculate mean rmse across all datasets
+        # calculate mean rmse across all datasets for kf estimates
         mse, rmse, mse_mcp, rmse_mcp, mse_gyro, rmse_gyro = self.performance_metrics(kf_preds=kf_preds_store, lk=lk_store, gyro=gyro_store, gnd_t=gnd_store, tot=metrics_range)
+                
         ones = np.ones_like(ts) # for plotting
-        plt.figure(figsize=(8, 4))
+        plt.figure("RMSE relative to KF estimates",figsize=(8, 4))
         plt.plot(ts,rmse,'-b', label='RMSE Gnd')
         plt.plot(ts,ones*np.mean(rmse), '--b')
         # plt.plot(ts,mse, '-c', label='MSE Gnd')
@@ -226,12 +242,28 @@ class Kalman_filtering:
         
         plt.xlabel("Time (s)")
         plt.ylabel("RMSE (deg)")
-        plt.ylim(-0.5,4.5)
+        # plt.ylim(-0.5,4.5)
         plt.legend()
         plt.tight_layout()
         plt.show(block=False)
         print(f"Maximum RMSE: {np.max(rmse)}, Minimum RMSE: {np.min(rmse)}")
         print(f"Maximum MSE: {np.max(mse)}, Minimum MSE: {np.min(mse)}")
+
+        # calculate rmse of kf estimates relative to mcp and gyro data
+        rmse_mcp_gnd, rmse_mcp_gyro = self.performance_metrics_lk(lk=lk_store, gyro=gyro_store, gnd_t=gnd_store, tot=metrics_range)
+        
+        plt.figure("RMSE relative to MCP",figsize=(8,4))
+        plt.plot(ts,rmse_mcp_gnd,'-b', label='RMSE Gnd')
+        plt.plot(ts,ones*np.mean(rmse_mcp_gnd), '--b')
+        plt.plot(ts,rmse_mcp_gyro,'-r', label='RMSE Gyro')
+        plt.plot(ts,ones*np.mean(rmse_mcp_gyro), '--r')
+        plt.xlabel("Time (s)")
+        plt.ylabel("RMSE (deg)")
+        plt.tight_layout()
+        plt.legend()
+        plt.show(block=False)
+        print(f"Maximum RMSE MCP-Gnd: {np.max(rmse_mcp_gnd)}, Minimum RMSE MCP-Gnd: {np.min(rmse_mcp_gnd)}")
+        print(f"Maximum RMSE MCP-Gyro: {np.max(rmse_mcp_gyro)}, Minimum RMSE MCP-Gyro: {np.min(rmse_mcp_gyro)}")
 
         
 if __name__ == "__main__":
@@ -248,3 +280,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         plt.close('all')
         raise SystemExit("Program interrupted by user. Exiting...")
+
+# run command: 
+# python kf_participants.py pitch
+# python kf_participants.py roll

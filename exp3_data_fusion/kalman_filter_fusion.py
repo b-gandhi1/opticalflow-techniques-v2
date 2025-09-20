@@ -138,6 +138,8 @@ class Kalman_filtering:
         plt.plot(time, gyro, label='Gyro_syn')
         plt.plot(time, gnd, label='Gnd_syn')
         plt.ylim(-40,48)
+        plt.xlabel("Time (s)")
+        plt.ylabel("Degrees")
         plt.legend(loc='upper right')    
         plt.show(block=False)
         
@@ -224,9 +226,21 @@ class Kalman_filtering:
         plt.show(block=False) # continue running after plot is shown
         
         return x_store
+    
+    def performance_metrics_lk(self, lk, gyro, gnd_t, tot): # calculates rmse relative to mcp values
+        tot = float(tot[-1]) # num of samples being used, 3 | 4 | 5, depending on which dataset. 
+        
+        diff_sq_gyro = np.abs(lk - gnd_t)**2
+        diff_sq_gnd = np.abs(lk - gyro)**2
+        
+        rmse_gyro = np.sqrt(1/tot * np.sum(diff_sq_gyro, axis = 1))
+        rmse_gnd = np.sqrt(1/tot * np.sum(diff_sq_gnd, axis = 1))
+        
+        return rmse_gyro, rmse_gnd
 
-    def performance_metrics(self, kf_preds, lk, gyro, gnd_t, tot): # Monte Carlo sim setup: 
+    def performance_metrics(self, kf_preds, lk, gyro, gnd_t, tot): # calculates rmse relative to kf estimates
         tot = float(tot[-1])
+        # print(f"Tot var for RMSE calc: {tot}.-------------------------")
         
         diff_sq = np.abs(kf_preds - gnd_t)**2
         diff_sq_mcp = np.abs(kf_preds - lk)**2
@@ -249,7 +263,7 @@ class Kalman_filtering:
         rmse_gyro = np.sqrt(mse_gyro) # rmse for gyro data
         
         return mse, rmse, mse_mcp, rmse_mcp, mse_gyro, rmse_gyro
-    
+        
     def data_indv_mc_sims(self):
         
         print(f"Running datasets {self.mode} mode.")
@@ -339,10 +353,11 @@ class Kalman_filtering:
             gnd_store[:,i] = offset_gnd_dat.flatten() # store ground truth data
             kf_preds_store[:,i] = x_pred.flatten() # store KF predictions
 
+        # rmse relative to kf estimations: 
         mse, rmse, mse_mcp, rmse_mcp, mse_gyro, rmse_gyro = self.performance_metrics(kf_preds=kf_preds_store, lk=lk_store, gyro=gyro_store, gnd_t=gnd_store, tot=metrics_range)
         
         ones = np.ones_like(ts) # for plotting
-        plt.figure(figsize=(8, 4))
+        plt.figure("RMSE relative to KF estimates",figsize=(8, 4))
         plt.plot(ts,rmse,'-b', label='RMSE Gnd')
         plt.plot(ts,ones*np.mean(rmse), '--b')
         # plt.plot(ts,mse, '-c', label='MSE Gnd')
@@ -364,14 +379,30 @@ class Kalman_filtering:
         plt.show(block=False)
         print(f"Maximum RMSE: {np.max(rmse)}, Minimum RMSE: {np.min(rmse)}")
         print(f"Maximum MSE: {np.max(mse)}, Minimum MSE: {np.min(mse)}")
-    
+        
+        # rmse relative to mcp measurements: 
+        rmse_mcp_gnd, rmse_mcp_gyro = self.performance_metrics_lk(lk=lk_store, gyro=gyro_store, gnd_t=gnd_store, tot=metrics_range)
+        
+        plt.figure("RMSE relative to MCP",figsize=(8,4))
+        plt.plot(ts,rmse_mcp_gnd,'-b', label='RMSE Gnd')
+        plt.plot(ts,ones*np.mean(rmse_mcp_gnd), '--b')
+        plt.plot(ts,rmse_mcp_gyro,'-r', label='RMSE Gyro')
+        plt.plot(ts,ones*np.mean(rmse_mcp_gyro), '--r')
+        plt.xlabel("Time (s)")
+        plt.ylabel("RMSE (deg)")
+        plt.tight_layout()
+        plt.legend()
+        plt.show(block=False)
+        print(f"Maximum RMSE MCP-Gnd: {np.max(rmse_mcp_gnd)}, Minimum RMSE MCP-Gnd: {np.min(rmse_mcp_gnd)}")
+        print(f"Maximum RMSE MCP-Gyro: {np.max(rmse_mcp_gyro)}, Minimum RMSE MCP-Gyro: {np.min(rmse_mcp_gyro)}")
+
     def plot_metrics_test(self, kf_preds_store, lk_store, gyro_store, gnd_store):
         metrics_range = range(len(kf_preds_store))
         mse, rmse, mse_mcp, rmse_mcp, mse_gyro, rmse_gyro = self.performance_metrics(kf_preds=kf_preds_store, lk=lk_store, gyro=gyro_store, gnd_t=gnd_store, tot=metrics_range)
         ts = np.linspace(0, kf_preds_store.shape[0]/FPS, num=kf_preds_store.shape[0]) # time series for x-axis
         ones = np.ones_like(ts) # for plotting
         
-        plt.figure(figsize=(8, 4))
+        plt.figure("RMSE relative to KF estimates",figsize=(8, 4))
         plt.plot(ts,rmse,'-b', label='RMSE Gnd')
         plt.plot(ts,ones*np.mean(rmse), '--b')
         # plt.plot(ts,mse, '-c', label='MSE Gnd')
@@ -391,7 +422,7 @@ class Kalman_filtering:
         plt.tight_layout()
         plt.show(block=False)
         print(f"Maximum RMSE: {np.max(rmse)}, Minimum RMSE: {np.min(rmse)}")
-        print(f"Maximum MSE: {np.max(mse)}, Minimum MSE: {np.min(mse)}")
+        print(f"Maximum MSE: {np.max(mse)}, Minimum MSE: {np.min(mse)}")        
 
 
 if __name__ == "__main__":
