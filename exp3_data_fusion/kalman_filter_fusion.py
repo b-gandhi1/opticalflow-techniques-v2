@@ -6,8 +6,7 @@ import glob
 import sys
 import os
 from sklearn.preprocessing import MinMaxScaler
-from scipy.linalg import block_diag
-from filterpy.common import Q_discrete_white_noise
+from scipy.stats import spearmanr
 
 # const vars
 FPS = 10.0 # 10 fps
@@ -86,6 +85,7 @@ class Kalman_filtering:
             gnd_truth = pitchroll_df.loc[trim_start:trim_end,'Franka Ry'] 
             offset_gnd = -37.9
             offset_gyro = 0.0
+            pressure = pitchroll_df.loc[trim_start:trim_end,'Pressure (kPa)']
         elif self.mode == "roll":
             trim = 600
             pitchroll_lk = pitchroll_df.loc[trim:,'LKy']
@@ -93,7 +93,7 @@ class Kalman_filtering:
             gnd_truth = pitchroll_df.loc[trim:,'Franka Rx'] * (-1)
             offset_gnd = 48.3
             offset_gyro = 2.5
-            print(f"shapes: pitchroll_lk: {pitchroll_lk.shape}, pitchroll_gyro: {pitchroll_gyro.shape}, gnd_truth: {gnd_truth.shape}")
+            pressure = pitchroll_df.loc[trim:,'Pressure (kPa)']
         else:
             raise ValueError("Invalid mode. Choose 'pitch' or 'roll'. Current mode: {}".format(self.mode))
         
@@ -114,15 +114,25 @@ class Kalman_filtering:
         ts = np.linspace(0, len(scaled_pitchroll_lk)/FPS, num=len(scaled_pitchroll_lk)) # time series for x-axis
         # test data, plot
         plt.figure()
+        plt.subplot(2,1,1)
         plt.plot(ts,scaled_pitchroll_lk, label='LK')
         plt.plot(ts,offset_pitchroll_gyro, label='Gyro')
         plt.plot(ts,offset_gnd_dat, label='Ground Truth')
         plt.legend()
         plt.title(f"TEST: scaled LK data for {self.mode} mode")
         plt.xlabel("Time (s)")
-        plt.ylabel("Degrees")
+        plt.ylabel(f"Rotation, {self.mode} (Degrees)")
+        plt.subplot(2,1,2)
+        plt.plot(ts,pressure)
+        plt.xlabel("Time (s)")
+        plt.ylabel("Pressure (kPa)")
+        plt.tight_layout()
         plt.show(block=False)
         
+        print("------------------------------------------------")
+        print(f"Pressure and MCP motion correlation: {spearmanr(pressure, scaled_pitchroll_lk, alternative='two-sided', nan_policy='propagate')}")
+        print(f"Pressure and gnd truth motion correlation: {spearmanr(pressure, offset_gnd_dat, alternative='two-sided', nan_policy='propagate')}")
+        print("------------------------------------------------")
         return scaled_pitchroll_lk, offset_pitchroll_gyro, offset_gnd_dat
     
     def synthetic_data(self):
@@ -139,7 +149,7 @@ class Kalman_filtering:
         plt.plot(time, gnd, label='Gnd_syn')
         plt.ylim(-40,48)
         plt.xlabel("Time (s)")
-        plt.ylabel("Degrees")
+        plt.ylabel("Rotation (Degrees)")
         plt.legend(loc='upper right')    
         plt.show(block=False)
         
@@ -173,7 +183,10 @@ class Kalman_filtering:
         # ax2.set_title("Residuals")
         #----
         ax1.set_xlabel("Time (s)")
-        ax1.set_ylabel(f"Degrees ({self.mode} motion)") # pitch or roll
+        if self.mode == "none":
+            ax1.set_ylabel("Rotation (Degrees)") # synthetic data
+        else:
+            ax1.set_ylabel(f"Rotation, {self.mode} (Degrees)") # pitch or roll
         ax1.set_xlim(start/FPS, end/FPS)
         #----
         # ax2.set_xlabel("Time (s)")
@@ -308,14 +321,16 @@ class Kalman_filtering:
                 gnd_truth = data_frames_gnd[i].loc[:,'roll_x'] # roll_x for LK_*4, pitch_y for LK_*2
                 offset_gnd = 37.9
                 offset_gyro = 0.0
-                ylim = (-33,25)
+                ylim = (-40,25)
+                pressure = data_frames_imu[i].loc[:,'Pressure (kPa)']
             elif self.mode == "roll":
                 pitchroll_lk = data_frames_mcp[i].loc[:,'y_vals']
                 pitchroll_gyro = data_frames_imu[i].loc[:,'IMU Y'] * (-1) 
                 gnd_truth = data_frames_gnd[i].loc[:,'pitch_y'] * (-1) # pitch_y for LK_*4, roll_x for LK_*2
                 offset_gnd = 46.3
                 offset_gyro = 11.75
-                ylim = (-9,1)
+                ylim = (-10,1)
+                pressure = data_frames_imu[i].loc[:,'Pressure (kPa)']
             else:
                 raise ValueError("Invalid mode. Choose 'pitch' or 'roll'. Current mode: {}".format(self.mode))
             
@@ -333,16 +348,25 @@ class Kalman_filtering:
             print(f"min max of scaled_pitchroll_lk: {scaled_pitchroll_lk.min()}, {scaled_pitchroll_lk.max()}")
             print(f"sizes: scaled_pitchroll_lk: {scaled_pitchroll_lk.shape}, offset_pitchroll_gyro: {offset_pitchroll_gyro.shape}, offset_gnd_dat: {offset_gnd_dat.shape}")
             # test data, plot
-            plt.figure(figsize=(6,5))
-            plt.plot(ts,scaled_pitchroll_lk, label='MCP')
-            plt.plot(ts,offset_pitchroll_gyro, label='Gyro')
-            plt.plot(ts,offset_gnd_dat, label='Ground Truth')
-            plt.ylim(ylim)
-            plt.legend()
-            # plt.title(f"TEST: scaled LK data for {self.mode} {i+1} mode")
-            plt.xlabel("Time (s)")
-            plt.ylabel("Degrees")
+            fig, (ax1, ax2) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1]}, num=f"Dataset {i+1} for {self.mode} mode. Pressure mean: {np.mean(pressure):.3f}, std: {np.std(pressure):.3f}")
+            ax1.plot(ts,scaled_pitchroll_lk, label='MCP')
+            ax1.plot(ts,offset_pitchroll_gyro, label='Gyro')
+            ax1.plot(ts,offset_gnd_dat, label='Ground Truth')
+            ax1.set_ylim(ylim)
+            ax1.legend()
+            # ax1.set_title(f"TEST: scaled LK data for {self.mode} {i+1} mode")
+            # ax1.set_xlabel("Time (s)")
+            ax1.set_ylabel(f"Rotation, {self.mode} (Degrees)")
+            ax2.plot(ts,pressure)
+            ax2.set_xlabel("Time (s)")
+            ax2.set_ylabel("Pressure (kPa)")
+            plt.tight_layout()
             plt.show(block=False)
+            
+            print("------------------------------------------------")
+            print(f"Pressure and MCP motion correlation: {spearmanr(pressure, scaled_pitchroll_lk, alternative='two-sided', nan_policy='propagate')}")
+            print(f"Pressure and gnd truth motion correlation: {spearmanr(pressure, gnd_truth, alternative='two-sided', nan_policy='propagate')}")
+            print("------------------------------------------------")
             
             print(f"Running for dataset {i+1}/{len(data_frames_gnd)} for {self.mode} mode.")
             x_pred = self.kf_setup(lk=scaled_pitchroll_lk, gyro=offset_pitchroll_gyro, gnd_t=offset_gnd_dat, window="None") # run KF
@@ -357,7 +381,7 @@ class Kalman_filtering:
         mse, rmse, mse_mcp, rmse_mcp, mse_gyro, rmse_gyro = self.performance_metrics(kf_preds=kf_preds_store, lk=lk_store, gyro=gyro_store, gnd_t=gnd_store, tot=metrics_range)
         
         ones = np.ones_like(ts) # for plotting
-        plt.figure("RMSE relative to KF estimates",figsize=(8, 4))
+        plt.figure(f"RMSE relative to KF estimates",figsize=(8, 4))
         plt.plot(ts,rmse,'-b', label='RMSE Gnd')
         plt.plot(ts,ones*np.mean(rmse), '--b')
         # plt.plot(ts,mse, '-c', label='MSE Gnd')
@@ -377,9 +401,16 @@ class Kalman_filtering:
         plt.legend()
         plt.tight_layout()
         plt.show(block=False)
-        print(f"Maximum RMSE: {np.max(rmse)}, Minimum RMSE: {np.min(rmse)}")
-        print(f"Maximum MSE: {np.max(mse)}, Minimum MSE: {np.min(mse)}")
         
+        # print mean and std dev of rmse values -----------
+        print("------------------------------------------------")
+        trim=5
+        print(f"RMSE values relative to KF estimations from mannequin data, {self.mode} mode:")
+        print("         RMSE min | RMSE max | RMSE mean | RMSE std dev")
+        print(f"Gnd:     {np.min(rmse[trim:]):.4f}   | {np.max(rmse[trim:]):.4f}  | {np.mean(rmse[trim:]):.4f}   | {np.std(rmse[trim:]):.4f}")
+        print(f"MCP:     {np.min(rmse_mcp[trim:]):.4f}   | {np.max(rmse_mcp[trim:]):.4f}  | {np.mean(rmse_mcp[trim:]):.4f}   | {np.std(rmse_mcp[trim:]):.4f}")
+        print(f"Gyro:    {np.min(rmse_gyro[trim:]):.4f}   | {np.max(rmse_gyro[trim:]):.4f}  | {np.mean(rmse_gyro[trim:]):.4f}   | {np.std(rmse_gyro[trim:]):.4f}")
+        print("------------------------------------------------")
         # rmse relative to mcp measurements: 
         rmse_mcp_gnd, rmse_mcp_gyro = self.performance_metrics_lk(lk=lk_store, gyro=gyro_store, gnd_t=gnd_store, tot=metrics_range)
         
@@ -393,8 +424,14 @@ class Kalman_filtering:
         plt.tight_layout()
         plt.legend()
         plt.show(block=False)
-        print(f"Maximum RMSE MCP-Gnd: {np.max(rmse_mcp_gnd)}, Minimum RMSE MCP-Gnd: {np.min(rmse_mcp_gnd)}")
-        print(f"Maximum RMSE MCP-Gyro: {np.max(rmse_mcp_gyro)}, Minimum RMSE MCP-Gyro: {np.min(rmse_mcp_gyro)}")
+        # print(f"Maximum RMSE MCP-Gnd: {np.max(rmse_mcp_gnd)}, Minimum RMSE MCP-Gnd: {np.min(rmse_mcp_gnd)}")
+        # print(f"Maximum RMSE MCP-Gyro: {np.max(rmse_mcp_gyro)}, Minimum RMSE MCP-Gyro: {np.min(rmse_mcp_gyro)}")
+
+        print(f"RMSE values relative to MCP measurements from mannequin data, {self.mode} mode:")
+        print("         RMSE min | RMSE max | RMSE mean | RMSE std dev")
+        print(f"Gnd:     {np.min(rmse_mcp_gnd[trim:]):.4f}   | {np.max(rmse_mcp_gnd[trim:]):.4f}  | {np.mean(rmse_mcp_gnd[trim:]):.4f}   | {np.std(rmse_mcp_gnd[trim:]):.4f}")
+        print(f"Gyro:    {np.min(rmse_mcp_gyro[trim:]):.4f}   | {np.max(rmse_mcp_gyro[trim:]):.4f}  | {np.mean(rmse_mcp_gyro[trim:]):.4f}   | {np.std(rmse_mcp_gyro[trim:]):.4f}")
+        print("------------------------------------------------")
 
     def plot_metrics_test(self, kf_preds_store, lk_store, gyro_store, gnd_store):
         metrics_range = range(len(kf_preds_store))
@@ -421,8 +458,24 @@ class Kalman_filtering:
         plt.legend()
         plt.tight_layout()
         plt.show(block=False)
-        print(f"Maximum RMSE: {np.max(rmse)}, Minimum RMSE: {np.min(rmse)}")
-        print(f"Maximum MSE: {np.max(mse)}, Minimum MSE: {np.min(mse)}")        
+        # print(f"Maximum RMSE: {np.max(rmse)}, Minimum RMSE: {np.min(rmse)}")
+        # print(f"Maximum MSE: {np.max(mse)}, Minimum MSE: {np.min(mse)}")
+        
+        print("------------------------------------------------")
+        trim=5
+        print(f"RMSE values relative to KF estimations from mannequin data, {self.mode} mode:")
+        print("         RMSE min | RMSE max | RMSE mean | RMSE std dev")
+        print(f"Gnd:     {np.min(rmse[trim:]):.4f}   | {np.max(rmse[trim:]):.4f}  | {np.mean(rmse[trim:]):.4f}   | {np.std(rmse[trim:]):.4f}")
+        print(f"MCP:     {np.min(rmse_mcp[trim:]):.4f}   | {np.max(rmse_mcp[trim:]):.4f}  | {np.mean(rmse_mcp[trim:]):.4f}   | {np.std(rmse_mcp[trim:]):.4f}")
+        print(f"Gyro:    {np.min(rmse_gyro[trim:]):.4f}   | {np.max(rmse_gyro[trim:]):.4f}  | {np.mean(rmse_gyro[trim:]):.4f}   | {np.std(rmse_gyro[trim:]):.4f}")
+        print("------------------------------------------------")
+        # rmse relative to mcp measurements: 
+        rmse_mcp_gnd, rmse_mcp_gyro = self.performance_metrics_lk(lk=lk_store, gyro=gyro_store, gnd_t=gnd_store, tot=metrics_range)        
+        print(f"RMSE values relative to MCP measurements from mannequin data, {self.mode} mode:")
+        print("         RMSE min | RMSE max | RMSE mean | RMSE std dev")
+        print(f"Gnd:     {np.min(rmse_mcp_gnd[trim:]):.4f}   | {np.max(rmse_mcp_gnd[trim:]):.4f}  | {np.mean(rmse_mcp_gnd[trim:]):.4f}   | {np.std(rmse_mcp_gnd[trim:]):.4f}")
+        print(f"Gyro:    {np.min(rmse_mcp_gyro[trim:]):.4f}   | {np.max(rmse_mcp_gyro[trim:]):.4f}  | {np.mean(rmse_mcp_gyro[trim:]):.4f}   | {np.std(rmse_mcp_gyro[trim:]):.4f}")
+        print("------------------------------------------------")
 
 
 if __name__ == "__main__":

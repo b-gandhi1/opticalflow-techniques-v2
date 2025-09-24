@@ -6,7 +6,6 @@ import pandas as pd
 from filterpy.kalman import KalmanFilter#, UnscentedKalmanFilter, MerweScaledSigmaPoints
 import glob 
 import sys
-import os
 from sklearn.preprocessing import MinMaxScaler
 
 # const vars
@@ -67,7 +66,7 @@ class Kalman_filtering:
         # ax1.set_title("Kalman Filter")
         # ax2.set_title("Residuals")
         ax1.set_xlabel("Time (s)")
-        ax1.set_ylabel("Rotation "+self.mode) # pitch or roll
+        ax1.set_ylabel(f"Rotation, {self.mode} (Degrees)") # pitch or roll
         ax1.set_xlim(start/FPS, end/FPS)
         # ax1.set_ylim(-30, 30) # range for lk and gnd truth
         # ax2.set_xlabel("Time (s)")
@@ -158,7 +157,6 @@ class Kalman_filtering:
         mcp_csv_files = sorted(glob.glob(mcp_csv_path))
         data_frames_gnd_imu = [pd.read_csv(f) for f in imu_polaris_files]
         data_frames_mcp = [pd.read_csv(f, usecols=['x_vals','y_vals','z_vals']) for f in mcp_csv_files]
-        
         for f in data_frames_mcp:
             f['x_vals'] = self.normalize_vector(f['x_vals'])
             f['y_vals'] = self.normalize_vector(f['y_vals'])
@@ -209,10 +207,12 @@ class Kalman_filtering:
             plt.legend()
             # plt.title(f"TEST: scaled LK data {self.mode} {i+1} mode")
             plt.xlabel("Time (s)")
-            plt.ylabel("Degrees")
+            plt.ylabel(f"Rotation, {self.mode} (Degrees)")
+            plt.tight_layout()
             plt.show(block=False)
             
             print(f"Running for dataset {i+1}/{len(data_frames_gnd_imu)} for {self.mode} mode.")
+        
             # run KF
             x_pred = self.kf_setup(lk=scaled_pitchroll_lk, gyro=pitchroll_gyro, gnd_t=gnd_truth) # run KF
 
@@ -222,6 +222,10 @@ class Kalman_filtering:
             gnd_store[:,i] = gnd_truth # store ground truth data
             kf_preds_store[:,i] = x_pred.flatten() # store KF predictions
 
+        # save scaled pitchroll lk outputs to csv
+        scaled_pitchroll_lk_df = pd.DataFrame(lk_store)
+        scaled_pitchroll_lk_df.to_csv(f"participant_data/part-{self.mode}_scaled_mcp.csv", index=False)
+        
         # calculate mean rmse across all datasets for kf estimates
         mse, rmse, mse_mcp, rmse_mcp, mse_gyro, rmse_gyro = self.performance_metrics(kf_preds=kf_preds_store, lk=lk_store, gyro=gyro_store, gnd_t=gnd_store, tot=metrics_range)
                 
@@ -246,9 +250,16 @@ class Kalman_filtering:
         plt.legend()
         plt.tight_layout()
         plt.show(block=False)
-        print(f"Maximum RMSE: {np.max(rmse)}, Minimum RMSE: {np.min(rmse)}")
-        print(f"Maximum MSE: {np.max(mse)}, Minimum MSE: {np.min(mse)}")
-
+        # print(f"Maximum RMSE: {np.max(rmse)}, Minimum RMSE: {np.min(rmse)}")
+        # print(f"Maximum MSE: {np.max(mse)}, Minimum MSE: {np.min(mse)}")
+        print("------------------------------------------------")
+        trim=5
+        print(f"RMSE values relative to KF estimations from participant data, {self.mode} mode:")
+        print("         RMSE min | RMSE max | RMSE mean | RMSE std dev")
+        print(f"Gnd:     {np.min(rmse[trim:]):.4f}   | {np.max(rmse[trim:]):.4f}  | {np.mean(rmse[trim:]):.4f}   | {np.std(rmse[trim:]):.4f}")
+        print(f"MCP:     {np.min(rmse_mcp[trim:]):.4f}   | {np.max(rmse_mcp[trim:]):.4f}  | {np.mean(rmse_mcp[trim:]):.4f}   | {np.std(rmse_mcp[trim:]):.4f}")
+        print(f"Gyro:    {np.min(rmse_gyro[trim:]):.4f}   | {np.max(rmse_gyro[trim:]):.4f}  | {np.mean(rmse_gyro[trim:]):.4f}   | {np.std(rmse_gyro[trim:]):.4f}")
+        print("------------------------------------------------")
         # calculate rmse of kf estimates relative to mcp and gyro data
         rmse_mcp_gnd, rmse_mcp_gyro = self.performance_metrics_lk(lk=lk_store, gyro=gyro_store, gnd_t=gnd_store, tot=metrics_range)
         
@@ -262,8 +273,13 @@ class Kalman_filtering:
         plt.tight_layout()
         plt.legend()
         plt.show(block=False)
-        print(f"Maximum RMSE MCP-Gnd: {np.max(rmse_mcp_gnd)}, Minimum RMSE MCP-Gnd: {np.min(rmse_mcp_gnd)}")
-        print(f"Maximum RMSE MCP-Gyro: {np.max(rmse_mcp_gyro)}, Minimum RMSE MCP-Gyro: {np.min(rmse_mcp_gyro)}")
+        # print(f"Maximum RMSE MCP-Gnd: {np.max(rmse_mcp_gnd)}, Minimum RMSE MCP-Gnd: {np.min(rmse_mcp_gnd)}")
+        # print(f"Maximum RMSE MCP-Gyro: {np.max(rmse_mcp_gyro)}, Minimum RMSE MCP-Gyro: {np.min(rmse_mcp_gyro)}")
+        print(f"RMSE values relative to MCP measurements from participant data, {self.mode} mode:")
+        print("         RMSE min | RMSE max | RMSE mean | RMSE std dev")
+        print(f"Gnd:     {np.min(rmse_mcp_gnd[trim:]):.4f}   | {np.max(rmse_mcp_gnd[trim:]):.4f}  | {np.mean(rmse_mcp_gnd[trim:]):.4f}   | {np.std(rmse_mcp_gnd[trim:]):.4f}")
+        print(f"Gyro:    {np.min(rmse_mcp_gyro[trim:]):.4f}   | {np.max(rmse_mcp_gyro[trim:]):.4f}  | {np.mean(rmse_mcp_gyro[trim:]):.4f}   | {np.std(rmse_mcp_gyro[trim:]):.4f}")
+        print("------------------------------------------------")
 
         
 if __name__ == "__main__":

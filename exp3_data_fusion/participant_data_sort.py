@@ -136,7 +136,7 @@ class ParticipantDataSort:
         plt.ylabel('Pressure (kPa), roll')
         
         plt.tight_layout()
-        
+                
         setpoint = 1.7
         print(f"control: overall mean pressure: pitch - {np.mean(np.mean(pressures_pitch, axis=0))}, roll - {np.mean(np.mean(pressures_roll, axis=0))}")
         print(f"Max deviation pitch: {np.abs(np.max(np.mean(pressures_pitch, axis=0)[trim:]) - setpoint)}")
@@ -144,6 +144,14 @@ class ParticipantDataSort:
         print(f"Max deviation roll: {np.abs(np.max(np.mean(pressures_roll, axis=0)[trim:]) - setpoint)}")
         print(f"Min deviation roll: {np.abs(np.min(np.mean(pressures_roll, axis=0)[trim:]) - setpoint)}")
         # plt.show() # show all figs
+        
+        # save pressure_pitch and pressure_roll dfs to csv
+        pressure_pitch_df = pd.concat([pressures_pitch[0],pressures_pitch[1],pressures_pitch[2]], axis=1)
+        pressure_roll_df = pd.concat([pressures_roll[0],pressures_roll[1],pressures_roll[2]], axis=1)
+        # print(np.shape(pressures_pitch), np.shape(pressures_roll))
+        print(pressure_pitch_df.shape, pressure_roll_df.shape)
+        # pressure_pitch_df.to_csv(f"participant_data/part_pressure_pitch.csv", index=False)
+        # pressure_roll_df.to_csv(f"participant_data/part_pressure_roll.csv", index=False)
 
 
 if __name__ == "__main__":
