@@ -136,13 +136,14 @@ class Kalman_filtering:
         return scaled_pitchroll_lk, offset_pitchroll_gyro, offset_gnd_dat
     
     def synthetic_data(self):
-        # generate synthetic data for testing kf
+        # trial for onely 1 run using synthetic data
         print("Generating synthetic data for testing.")
         num_samples = 300
         time = np.linspace(0, num_samples/FPS, num_samples)
         lk = np.sin(2 * np.pi * 0.1 * time) * 20 + np.random.normal(0, 7, num_samples)
         gyro = np.sin(2 * np.pi * 0.1 * time) * 19 + np.random.normal(0, 0.5, num_samples) + 3.0 # 3.0 = drift
         gnd = np.sin(2 * np.pi * 0.1 * time) * 20
+        
         plt.figure(figsize=(6, 5))
         plt.plot(time, lk, label='MCP_syn')
         plt.plot(time, gyro, label='Gyro_syn')
@@ -154,6 +155,27 @@ class Kalman_filtering:
         plt.show(block=False)
         
         return lk, gyro, gnd
+    def synthetic_data_mc(self):
+        # generate synthetic data for testing kf, 10 monte carlo simulations
+        print("Generating synthetic data for testing.")
+        num_samples = 300
+        time = np.linspace(0, num_samples/FPS, num_samples)
+        
+        lk_mat = np.empty((num_samples, 10)) # 10 simulations
+        gnd_mat = np.empty((num_samples, 10)) 
+        gyro_mat = np.empty((num_samples, 10))
+        kf_mat = np.empty((num_samples, 10))
+        
+        for i in range(10):
+            lk_mat[:, i] = np.sin(2 * np.pi * 0.1 * time) * 20 + np.random.normal(0, 7, num_samples)
+            gyro_mat[:, i] = np.sin(2 * np.pi * 0.1 * time) * 19 + np.random.normal(0, 0.5, num_samples) + 3.0 # 3.0 = drift
+            gnd_mat[:, i] = np.sin(2 * np.pi * 0.1 * time) * 20
+            # calc kf and store
+            kf_mat[:,i] = self.kf_setup(lk=lk_mat[:,i], gyro=gyro_mat[:,i], gnd_t=gnd_mat[:,i], window="None") # run KF
+        
+        kf.plot_metrics_test(kf_preds_store=kf_mat, lk_store=lk_mat, gyro_store=gyro_mat, gnd_store=gnd_mat)
+        
+        return lk_mat, gyro_mat, gnd_mat
     
     def kf_setup(self, lk, gyro, gnd_t, window): # setup KF, get data    
         # lk, gyro, gnd_t = self.get_data()
@@ -204,7 +226,7 @@ class Kalman_filtering:
             
             # update measurement, z, based on motion type
             # z = [x_mcp, y_mcp x_gyro, y_gyro].T --- format
-            if self.mode == "pitch" or self.mode == "none": # y_mcp, y_gyro
+            if self.mode == "pitch" or self.mode == "none" or self.mode == "test": # y_mcp, y_gyro
                 self.kf.z = np.array([[0., float(lk[i]), 0., gyro[i]]]).T
                 x_ax, res_ax_pos, res_ax_vel = 1, 1, 3
                 ax1.set_ylim(-33, 30)
@@ -483,7 +505,7 @@ if __name__ == "__main__":
     kf.mode = sys.argv[1] # input mode: "pitch" | "roll"
     mc = sys.argv[2] if len(sys.argv) > 2 else "none" # monte carlo simulation mode
     try:
-        if mc == "mc":
+        if mc == "mc" and kf.mode in ["pitch", "roll"]:
             
             # kf.mc_sims_kf_loop(lk=lk, gyro=gyro, gnd_t=gnd_t)
             kf.data_indv_mc_sims()
@@ -491,7 +513,14 @@ if __name__ == "__main__":
             lk_syn, gyro_syn, gnd_t_syn = kf.synthetic_data()
             kf_pred = kf.kf_setup(lk=lk_syn, gyro=gyro_syn, gnd_t=gnd_t_syn, window="None")
             kf.plot_metrics_test(kf_preds_store=kf_pred, lk_store=lk_syn, gyro_store=gyro_syn, gnd_store=gnd_t_syn)
-        else: 
+        elif kf.mode == "test" and mc == "mc":
+            lk_syn, gyro_syn, gnd_t_syn = kf.synthetic_data_mc()
+            # kf_pred = kf.kf_setup(lk=lk_syn, gyro=gyro_syn, gnd_t=gnd_t_syn, window="None")
+            # kf.plot_metrics_test(kf_preds_store=kf_pred, lk_store=lk_syn, gyro_store=gyro_syn, gnd_store=gnd_t_syn)
+            # make a sound when done: 
+            print('\a')  # This may not work in some environments
+            print("Synthetic data test complete.")
+        else:
             lk, gyro, gnd_t = kf.get_data()
             kf.kf_setup(lk=lk, gyro=gyro, gnd_t=gnd_t, window=100)
         print('All plots displayed, press any key to close all windows and exit on a figure window.')
