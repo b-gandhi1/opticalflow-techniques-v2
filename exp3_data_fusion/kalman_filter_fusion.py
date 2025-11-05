@@ -76,7 +76,7 @@ class Kalman_filtering:
                                                                         'LKx': float, 
                                                                         'LKy': float}) 
         pitchroll_df = pitchroll_df.loc[pitchroll_df.ne(0).all(axis=1)].reset_index(drop=True) # remove rows with zero values
-        # breakpoint()
+        breakpoint()
         if self.mode == "pitch":
             trim_start = 600 # trim first 600 rows
             trim_end = 3000
@@ -86,6 +86,7 @@ class Kalman_filtering:
             offset_gnd = -37.9
             offset_gyro = 0.0
             pressure = pitchroll_df.loc[trim_start:trim_end,'Pressure (kPa)']
+            ylim = (-40,25)
         elif self.mode == "roll":
             trim = 600
             pitchroll_lk = pitchroll_df.loc[trim:,'LKy']
@@ -94,6 +95,7 @@ class Kalman_filtering:
             offset_gnd = 48.3
             offset_gyro = 2.5
             pressure = pitchroll_df.loc[trim:,'Pressure (kPa)']
+            ylim = (-10,1)
         else:
             raise ValueError("Invalid mode. Choose 'pitch' or 'roll'. Current mode: {}".format(self.mode))
         
@@ -113,19 +115,22 @@ class Kalman_filtering:
         
         ts = np.linspace(0, len(scaled_pitchroll_lk)/FPS, num=len(scaled_pitchroll_lk)) # time series for x-axis
         # test data, plot
-        plt.figure()
-        plt.subplot(2,1,1)
-        plt.plot(ts,scaled_pitchroll_lk, label='LK')
-        plt.plot(ts,offset_pitchroll_gyro, label='Gyro')
-        plt.plot(ts,offset_gnd_dat, label='Ground Truth')
-        plt.legend()
-        plt.title(f"TEST: scaled LK data for {self.mode} mode")
-        plt.xlabel("Time (s)")
-        plt.ylabel(f"Rotation, {self.mode} (Degrees)")
-        plt.subplot(2,1,2)
-        plt.plot(ts,pressure)
-        plt.xlabel("Time (s)")
-        plt.ylabel("Pressure (kPa)")
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, gridspec_kw={'height_ratios': [4, 1, 1]})
+        ax1.plot(ts,scaled_pitchroll_lk, label='MCP')
+        ax1.plot(ts,offset_pitchroll_gyro, label='Gyro')
+        ax1.plot(ts,offset_gnd_dat, label='Ground Truth')
+        ax1.set_ylim(ylim)
+        ax1.legend()
+        # ax1.set_title(f"TEST: scaled LK data for {self.mode} {i+1} mode")
+        # ax1.set_xlabel("Time (s)")
+        ax1.set_ylabel(f"Rotation, {self.mode} (Degrees)")
+        ax2.plot(ts,pressure)
+        # ax2.set_xlabel("Time (s)")
+        ax2.set_ylabel("Pressure (kPa)")
+        pressure_grad = np.gradient(pressure)
+        ax3.plot(ts, pressure_grad)
+        ax3.set_ylabel("dP/dt (kPa/s)")
+        ax3.set_xlabel("Time (s)")
         plt.tight_layout()
         plt.show(block=False)
         
@@ -370,7 +375,7 @@ class Kalman_filtering:
             print(f"min max of scaled_pitchroll_lk: {scaled_pitchroll_lk.min()}, {scaled_pitchroll_lk.max()}")
             print(f"sizes: scaled_pitchroll_lk: {scaled_pitchroll_lk.shape}, offset_pitchroll_gyro: {offset_pitchroll_gyro.shape}, offset_gnd_dat: {offset_gnd_dat.shape}")
             # test data, plot
-            fig, (ax1, ax2) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1]}, num=f"Dataset {i+1} for {self.mode} mode. Pressure mean: {np.mean(pressure):.3f}, std: {np.std(pressure):.3f}")
+            fig, (ax1, ax2, ax3) = plt.subplots(3, 1, gridspec_kw={'height_ratios': [4, 1, 1]}, num=f"Dataset {i+1} for {self.mode} mode. Pressure mean: {np.mean(pressure):.3f}, std: {np.std(pressure):.3f}")
             ax1.plot(ts,scaled_pitchroll_lk, label='MCP')
             ax1.plot(ts,offset_pitchroll_gyro, label='Gyro')
             ax1.plot(ts,offset_gnd_dat, label='Ground Truth')
@@ -380,8 +385,12 @@ class Kalman_filtering:
             # ax1.set_xlabel("Time (s)")
             ax1.set_ylabel(f"Rotation, {self.mode} (Degrees)")
             ax2.plot(ts,pressure)
-            ax2.set_xlabel("Time (s)")
+            # ax2.set_xlabel("Time (s)")
             ax2.set_ylabel("Pressure (kPa)")
+            pressure_grad = np.gradient(pressure)
+            ax3.plot(ts, pressure_grad)
+            ax3.set_ylabel("dP/dt (kPa/s)")
+            ax3.set_xlabel("Time (s)")
             plt.tight_layout()
             plt.show(block=False)
             
@@ -522,7 +531,7 @@ if __name__ == "__main__":
             print("Synthetic data test complete.")
         else:
             lk, gyro, gnd_t = kf.get_data()
-            kf.kf_setup(lk=lk, gyro=gyro, gnd_t=gnd_t, window=100)
+            # kf.kf_setup(lk=lk, gyro=gyro, gnd_t=gnd_t, window=100)
         print('All plots displayed, press any key to close all windows and exit on a figure window.')
         while True: 
             if plt.waitforbuttonpress():

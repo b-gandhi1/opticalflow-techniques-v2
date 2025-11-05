@@ -151,13 +151,14 @@ def corr_calc(pitchrollN, pitchroll, num, spacing):
         gnd_ax = 'roll_x'
         offset_gnd = 37.9
         time_period = 12.3
+        ax_min, ax_max = -38, 30
     elif pitchroll == "roll":
         exp_ax = 'y_vals'
         gnd_ax = 'pitch_y'
         offset_gnd = 46.0 
         time_period = 5.0
         gnd_data_all[gnd_ax] = gnd_data_all[gnd_ax] * (-1)
-        
+        ax_min, ax_max = -10.5, 2
     else:
         SystemExit("Invalid pitchroll input")
 
@@ -196,6 +197,7 @@ def corr_calc(pitchrollN, pitchroll, num, spacing):
     ax.plot(t,norm_exp_data, label='Exp_dat')
     ax.plot(t,offset_gnd_dat, label='Gnd_dat')
     ax.set_ylabel('Angle (degrees)')
+    ax.set_ylim([ax_min, ax_max])
     ax.set_xlabel('Time (s)')
     ax.legend(loc='lower right')
     plt.tight_layout()
