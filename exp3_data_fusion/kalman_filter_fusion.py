@@ -348,7 +348,7 @@ class Kalman_filtering:
                 gnd_truth = data_frames_gnd[i].loc[:,'roll_x'] # roll_x for LK_*4, pitch_y for LK_*2
                 offset_gnd = 37.9
                 offset_gyro = 0.0
-                ylim = (-40,25)
+                ylim = (-32,25)
                 pressure = data_frames_imu[i].loc[:,'Pressure (kPa)']
             elif self.mode == "roll":
                 pitchroll_lk = data_frames_mcp[i].loc[:,'y_vals']
@@ -356,7 +356,7 @@ class Kalman_filtering:
                 gnd_truth = data_frames_gnd[i].loc[:,'pitch_y'] * (-1) # pitch_y for LK_*4, roll_x for LK_*2
                 offset_gnd = 46.3
                 offset_gyro = 11.75
-                ylim = (-10,1)
+                ylim = (-9,1)
                 pressure = data_frames_imu[i].loc[:,'Pressure (kPa)']
             else:
                 raise ValueError("Invalid mode. Choose 'pitch' or 'roll'. Current mode: {}".format(self.mode))
@@ -375,22 +375,28 @@ class Kalman_filtering:
             print(f"min max of scaled_pitchroll_lk: {scaled_pitchroll_lk.min()}, {scaled_pitchroll_lk.max()}")
             print(f"sizes: scaled_pitchroll_lk: {scaled_pitchroll_lk.shape}, offset_pitchroll_gyro: {offset_pitchroll_gyro.shape}, offset_gnd_dat: {offset_gnd_dat.shape}")
             # test data, plot
-            fig, (ax1, ax2, ax3) = plt.subplots(3, 1, gridspec_kw={'height_ratios': [4, 1, 1]}, num=f"Dataset {i+1} for {self.mode} mode. Pressure mean: {np.mean(pressure):.3f}, std: {np.std(pressure):.3f}")
+            fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, gridspec_kw={'height_ratios': [4, 1, 1, 1]}, figsize=(9,8), num=f"Dataset {i+1} for {self.mode} mode. Pressure mean: {np.mean(pressure):.3f}, std: {np.std(pressure):.3f}, min: {np.min(pressure):.3f}, max: {np.max(pressure):.3f}")
             ax1.plot(ts,scaled_pitchroll_lk, label='MCP')
             ax1.plot(ts,offset_pitchroll_gyro, label='Gyro')
             ax1.plot(ts,offset_gnd_dat, label='Ground Truth')
             ax1.set_ylim(ylim)
+            ax1.xaxis.set_tick_params(labelbottom=False)
             ax1.legend()
             # ax1.set_title(f"TEST: scaled LK data for {self.mode} {i+1} mode")
             # ax1.set_xlabel("Time (s)")
             ax1.set_ylabel(f"Rotation, {self.mode} (Degrees)")
-            ax2.plot(ts,pressure)
-            # ax2.set_xlabel("Time (s)")
-            ax2.set_ylabel("Pressure (kPa)")
+            error = scaled_pitchroll_lk.flatten() - offset_gnd_dat.flatten()
+            ax2.plot(ts, error)
+            ax2.set_ylabel("MCP Error (Deg)")
+            ax2.xaxis.set_tick_params(labelbottom=False)
+            ax3.plot(ts,pressure)
+            # ax3.set_xlabel("Time (s)")
+            ax3.set_ylabel("Pressure (kPa)")
+            ax3.xaxis.set_tick_params(labelbottom=False)
             pressure_grad = np.gradient(pressure)
-            ax3.plot(ts, pressure_grad)
-            ax3.set_ylabel("dP/dt (kPa/s)")
-            ax3.set_xlabel("Time (s)")
+            ax4.plot(ts, pressure_grad)
+            ax4.set_ylabel("dP/dt (kPa/s)")
+            ax4.set_xlabel("Time (s)")
             plt.tight_layout()
             plt.show(block=False)
             
@@ -400,14 +406,16 @@ class Kalman_filtering:
             print("------------------------------------------------")
             
             print(f"Running for dataset {i+1}/{len(data_frames_gnd)} for {self.mode} mode.")
-            x_pred = self.kf_setup(lk=scaled_pitchroll_lk, gyro=offset_pitchroll_gyro, gnd_t=offset_gnd_dat, window="None") # run KF
+            # x_pred = self.kf_setup(lk=scaled_pitchroll_lk, gyro=offset_pitchroll_gyro, gnd_t=offset_gnd_dat, window="None") # run KF
 
-            # store vars
-            lk_store[:,i] = scaled_pitchroll_lk.flatten() # store lk data
-            gyro_store[:,i] = offset_pitchroll_gyro.flatten() # store gyro data
-            gnd_store[:,i] = offset_gnd_dat.flatten() # store ground truth data
-            kf_preds_store[:,i] = x_pred.flatten() # store KF predictions
+            # # store vars
+            # lk_store[:,i] = scaled_pitchroll_lk.flatten() # store lk data
+            # gyro_store[:,i] = offset_pitchroll_gyro.flatten() # store gyro data
+            # gnd_store[:,i] = offset_gnd_dat.flatten() # store ground truth data
+            # kf_preds_store[:,i] = x_pred.flatten() # store KF predictions
 
+        breakpoint()
+        
         # rmse relative to kf estimations: 
         mse, rmse, mse_mcp, rmse_mcp, mse_gyro, rmse_gyro = self.performance_metrics(kf_preds=kf_preds_store, lk=lk_store, gyro=gyro_store, gnd_t=gnd_store, tot=metrics_range)
         
