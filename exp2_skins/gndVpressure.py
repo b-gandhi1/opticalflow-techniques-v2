@@ -1,0 +1,84 @@
+import matplotlib.pyplot as plt
+import glob
+import pandas as pd
+
+FPS = 10 # Hz
+
+spacing = ["0-5", "1-0", "1-5"] # cm, spacings for respective path generations
+
+# pitch vars 
+gnd_ax_pitch = 'roll_x'
+pressure_ax_pitch = 'Pressure (kPa)'
+offset_gnd_pitch = 37.9
+
+# roll vars 
+gnd_ax_roll = 'pitch_y'
+pressure_ax_roll = 'Pressure (kPa)'
+offset_gnd_roll = 46.0 
+
+trim = 12 # for mcp vals
+
+# for each path, plot MCP val against ground truth onto the same plot, colour coded. 
+for space in spacing: 
+    path_kpa_list_pitch = sorted(glob.glob(f"data_collection_with_franka/B07LabTrials/skins-data/cm{space}/pitch/fibrescope*2024*.csv"))
+    path_gnd_list_pitch = sorted(glob.glob(f"data_collection_with_franka/B07LabTrials/skins-data/cm{space}/pitch/fibrescope*euler_gnd.csv"))
+    path_kpa_list_roll = sorted(glob.glob(f"data_collection_with_franka/B07LabTrials/skins-data/cm{space}/roll/fibrescope*2024*.csv"))
+    path_gnd_list_roll = sorted(glob.glob(f"data_collection_with_franka/B07LabTrials/skins-data/cm{space}/roll/fibrescope*euler_gnd.csv"))
+    
+    sampl_counter = 1
+    plt.figure(figsize=(12, 4), num=space+"cm spacing")
+    # pitch graphs
+    for path_kpa, path_gnd in zip(path_kpa_list_pitch, path_gnd_list_pitch):
+        
+        pressure_data_pitch = pd.read_csv(path_kpa, usecols={pressure_ax_pitch})
+        gnd_data_pitch = pd.read_csv(path_gnd, usecols={gnd_ax_pitch}) + offset_gnd_pitch
+        pressure_data_pitch = pressure_data_pitch.iloc[trim:]
+        
+        # pressure stats 
+        print(f"Pitch pressure, mean: {pressure_data_pitch.values.mean():.3f}, std: {pressure_data_pitch.values.std():.3f}, min: {pressure_data_pitch.values.min():.3f}, max: {pressure_data_pitch.values.max():.3f}")
+        # pitch_norm = (mcp_data_pitch.values - mcp_data_pitch.values.min())/(mcp_data_pitch.values.max() - mcp_data_pitch.values.min()) * (gnd_data_pitch.values.max() - gnd_data_pitch.values.min()) + gnd_data_pitch.values.min()
+        # breakpoint()
+        plt.subplot(1, 2, 1)
+        # plt.plot(pitch_norm, label='MCP')
+        # plt.plot(gnd_data_pitch, label='Ground Truth')
+        # plt.title(f"Pitch - {space} cm")
+        # plt.xlabel('Time (s)')
+        plt.scatter(pressure_data_pitch.values, gnd_data_pitch.values, label=f"{sampl_counter}")
+        plt.xlabel('Pressure, pitch (kPa)')
+        plt.xlim(0.2,3.2)
+        plt.ylabel('Ground Truth, pitch (deg)')
+        sampl_counter += 1
+        plt.legend(loc='upper left')
+        plt.tight_layout()
+        
+    sampl_counter = 1 # reset counter
+    # roll graphs
+    for path_kpa, path_gnd in zip(path_kpa_list_roll, path_gnd_list_roll):
+        # roll data
+        pressure_data_roll = pd.read_csv(path_kpa, usecols={pressure_ax_roll})
+        gnd_data_roll = (pd.read_csv(path_gnd, usecols={gnd_ax_roll}) *(-1)) + offset_gnd_roll
+        pressure_data_roll = pressure_data_roll.iloc[trim:]
+        
+        # pressure stats
+        print(f"Roll pressure, mean: {pressure_data_roll.values.mean():.3f}, std: {pressure_data_roll.values.std():.3f}, min: {pressure_data_roll.values.min():.3f}, max: {pressure_data_roll.values.max():.3f}")
+        # roll_norm = (mcp_data_roll.values - mcp_data_roll.values.min())/(mcp_data_roll.values.max() - mcp_data_roll.values.min()) * (gnd_data_roll.values.max() - gnd_data_roll.values.min()) + gnd_data_roll.values.min()
+        plt.subplot(1, 2, 2)
+        # plt.plot(roll_norm, label='MCP')
+        # plt.plot(gnd_data_roll, label='Ground Truth')
+        # plt.title(f"Roll - {space} cm")
+        # plt.xlabel('Time (s)')
+        plt.scatter(pressure_data_roll.values, gnd_data_roll.values, label=f"{sampl_counter}")
+        plt.xlabel('Pressure, roll (kPa)')
+        plt.ylabel('Ground Truth, roll (deg)')
+        sampl_counter += 1
+        plt.legend()
+        plt.tight_layout()
+    
+    # save the three figs in three file formats.. 
+    plt.savefig(f"figs_sampl/data2_skins/gndVpressure_{space}cm.png", dpi=300)
+    plt.savefig(f"figs_sampl/data2_skins/gndVpressure_{space}cm.svg")
+    plt.savefig(f"figs_sampl/data2_skins/gndVpressure_{space}cm.eps")
+
+plt.show()
+
+

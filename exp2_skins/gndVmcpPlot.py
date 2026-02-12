@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import glob
-import numpy as np
 import pandas as pd
 
 FPS = 10 # Hz
@@ -27,7 +26,7 @@ for space in spacing:
     path_gnd_list_roll = sorted(glob.glob(f"data_collection_with_franka/B07LabTrials/skins-data/cm{space}/roll/fibrescope*euler_gnd.csv"))
     
     sampl_counter = 1
-    plt.figure()
+    plt.figure(figsize=(12, 4), num=space+"cm spacing")
     # pitch graphs
     for path_mcp, path_gnd in zip(path_mcp_list_pitch, path_gnd_list_pitch):
         
@@ -45,8 +44,9 @@ for space in spacing:
         plt.scatter(pitch_norm, gnd_data_pitch.values, label=f"{sampl_counter}")
         plt.xlabel('MCP, pitch (deg)')
         plt.ylabel('Ground Truth, pitch (deg)')
+        plt.xlim(-27,20)
         sampl_counter += 1
-        plt.legend()
+        plt.legend(loc='upper left')
         plt.tight_layout()
         
     sampl_counter = 1 # reset counter
@@ -69,7 +69,12 @@ for space in spacing:
         sampl_counter += 1
         plt.legend()
         plt.tight_layout()
-        
+    
+    # save the three figs in three file formats.. 
+    plt.savefig(f"figs_sampl/data2_skins/gndVmcp_{space}cm.png", dpi=300)
+    plt.savefig(f"figs_sampl/data2_skins/gndVmcp_{space}cm.svg")
+    plt.savefig(f"figs_sampl/data2_skins/gndVmcp_{space}cm.eps")
+
 plt.show()
 
 
